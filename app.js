@@ -2,10 +2,13 @@ import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=4';
 import {entries,playerModels} from './catalog.js?v=1';
+import {loadModel as load} from './asset-loader.js';
 
 const $=id=>document.getElementById(id);
 const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГОЕ'};
-const buffers=new Map();
+const fittedHats=new Map();
+function fittedHat(entry,nextBody){const key=player.id+':'+entry.id+':'+JSON.stringify(nextBody);const cached=fittedHats.get(key);if(cached){fittedHats.delete(key);fittedHats.set(key,cached);}return {key,cached};}
+function trimHats(){for(const [key,value] of fittedHats){if(fittedHats.size<=4)break;if(value!==hat){fittedHats.delete(key);disposeMDL(value);}}}
 const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
 const favorites=new Set(readJSON('zm-rush-favorites',[]));
 const slots=readJSON('zm-rush-slots',{a:null,b:null});
@@ -16,10 +19,7 @@ const telegram=window.Telegram?.WebApp;
 try{telegram?.ready();telegram?.expand();if(telegram?.isVersionAtLeast?.('6.1')){telegram.setHeaderColor('#101513');telegram.setBackgroundColor('#101513');}}catch{}
 
 const toast=text=>{$('toast').textContent=text;};
-async function load(file){
- if(!buffers.has(file))buffers.set(file,fetch('assets/'+file).then(r=>{if(!r.ok)throw Error('Не удалось загрузить '+file);return r.arrayBuffer();}).catch(e=>{buffers.delete(file);throw e;}));
- return buffers.get(file);
-}
+function syncSelection(){for(const card of $('items').children){const selected=card.dataset.id===current?.id;card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
 function renderCatalog(){
  const term=$('search').value.trim().toLocaleLowerCase('ru');
  const visible=entries.filter(e=>(filter==='all'||filter==='favorites'||e.category===filter)&&(!term||(e.name+' '+e.id).toLocaleLowerCase('ru').includes(term))&&(filter!=='favorites'||favorites.has(e.id)));
@@ -28,10 +28,10 @@ function renderCatalog(){
  for(const e of visible){
   const card=document.createElement('article');card.className='item'+(current?.id===e.id?' selected':'');card.dataset.id=e.id;
   const pick=document.createElement('button');pick.className='item-pick';pick.setAttribute('aria-label','Примерить: '+e.name);pick.setAttribute('aria-pressed',String(current?.id===e.id));
-  const img=document.createElement('img');img.alt='';img.loading='lazy';img.src='assets/previews/'+e.id+'.png';
+  const img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';img.width=256;img.height=256;img.src='assets/previews/'+e.id+'.webp';
   const name=document.createElement('span');name.className='item-name';name.textContent=e.name;
   const category=document.createElement('span');category.className='item-type';category.textContent=categories[e.category];
-  pick.append(img,name,category);pick.onclick=()=>selectLook(e,{},true);
+  pick.append(img,name,category);pick.onclick=()=>selectLook(e,{},true);pick.onpointerenter=pick.onfocus=()=>{if(ready)load('hats/'+e.id+'.mdl').catch(()=>{});};
   const fav=document.createElement('button');fav.className='favorite';fav.textContent=favorites.has(e.id)?'★':'☆';fav.title=favorites.has(e.id)?'Убрать из избранного':'Добавить в избранное';fav.setAttribute('aria-label',fav.title);fav.setAttribute('aria-pressed',String(favorites.has(e.id)));
   fav.onclick=ev=>{ev.stopPropagation();favorites.has(e.id)?favorites.delete(e.id):favorites.add(e.id);localStorage.setItem('zm-rush-favorites',JSON.stringify([...favorites]));renderCatalog();};
   card.append(pick,fav);if(current?.id===e.id){const check=document.createElement('span');check.className='check';check.textContent='✓';card.append(check);}$('items').append(card);
@@ -52,12 +52,12 @@ function setBusy(value){$('save').disabled=value;$('snapshot').disabled=value;$(
 async function selectLook(entry,nextBody={},writeSlot=true){
  if(!ready)return;const token=++ticket;$('loading').hidden=false;$('loading').textContent=entry?'Примеряем '+entry.name+'…':'Снимаем шапку…';setBusy(true);
  try{
-  let next=null;if(entry)next=parseMDL(await load('hats/'+entry.id+'.mdl'),ct.userData.bones,0,nextBody,player.hatScale);
-  if(token!==ticket){if(next)disposeMDL(next);return;}if(hat){rig.remove(hat);disposeMDL(hat);}hat=next;if(hat)rig.add(hat);current=entry;body=nextBody;
+  let next=null,key;if(entry){const lookup=fittedHat(entry,nextBody);key=lookup.key;next=lookup.cached;if(!next){const buffer=await load('hats/'+entry.id+'.mdl');if(token!==ticket)return;next=parseMDL(buffer,ct.userData.bones,0,nextBody,player.hatScale);fittedHats.set(key,next);}}
+  if(token!==ticket)return;if(hat)rig.remove(hat);hat=next;if(hat)rig.add(hat);trimHats();current=entry;body=nextBody;
   $('selected-name').textContent=entry?.name||'Без шапки';$('detail-name').textContent=entry?.name||'Классическая модель';$('detail-file').textContent=entry?entry.id+'.mdl · '+player.name:'Модель '+player.name;$('variants').replaceChildren();
   for(const variant of hat?.userData.variants||[]){const label=document.createElement('label');label.textContent='Вариант';const select=document.createElement('select');variant.names.forEach((name,index)=>{const option=document.createElement('option');option.value=index;option.textContent=name;select.append(option);});select.value=body[variant.part]||0;select.onchange=()=>selectLook(current,{...body,[variant.part]:Number(select.value)},true);label.append(select);$('variants').append(label);}
   if(writeSlot){slots[activeSlot]=entry?{id:entry.id,name:entry.name,body:{...nextBody}}:null;localStorage.setItem('zm-rush-slots',JSON.stringify(slots));}
-  refreshSlots();renderCatalog();toast('');try{telegram?.HapticFeedback?.selectionChanged();}catch{}
+  refreshSlots();syncSelection();toast('');try{telegram?.HapticFeedback?.selectionChanged();}catch{}
  }catch(e){console.error(e);toast(e.message+' — попробуйте ещё раз.');}finally{if(token===ticket){$('loading').hidden=true;setBusy(false);}}
 }
 function chooseSlot(key){activeSlot=key;refreshSlots();const look=slots[key],entry=look?entries.find(e=>e.id===look.id):null;selectLook(entry,look?.body||{},false);}
@@ -73,8 +73,8 @@ async function choosePlayer(id,initial=false){
   next=parseMDL(await load(nextPlayer.file),null,1);
   if(current)nextHat=parseMDL(await load('hats/'+current.id+'.mdl'),next.userData.bones,0,body,nextPlayer.hatScale);
   if(token!==playerTicket){disposeMDL(next);if(nextHat)disposeMDL(nextHat);return;}
-  if(hat){rig.remove(hat);disposeMDL(hat);}if(ct){rig.remove(ct);disposeMDL(ct);}
-  ct=next;hat=nextHat;player=nextPlayer;rig.add(ct);if(hat)rig.add(hat);
+  if(hat){rig.remove(hat);if(![...fittedHats.values()].includes(hat))disposeMDL(hat);}for(const cached of fittedHats.values())disposeMDL(cached);fittedHats.clear();if(ct){rig.remove(ct);disposeMDL(ct);}
+  ct=next;hat=nextHat;player=nextPlayer;rig.add(ct);if(hat){rig.add(hat);fittedHats.set(fittedHat(current,body).key,hat);}
   rig.position.y=0;rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(ct);rig.position.y=-bounds.min.y;rig.updateMatrixWorld(true);
   bounds.setFromObject(ct);modelHeight=bounds.max.y;modelHead.setFromMatrixPosition(ct.userData.bones.get('Bip01 Head')).applyMatrix4(rig.matrixWorld);
   animationTime=0;ready=true;frame(isClose());$('player-model').value=player.id;$('model-label').textContent=player.name;
