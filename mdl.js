@@ -21,7 +21,7 @@ export function parseMDL(buffer, targetBones=null, sequence=0, body={}) {
   const rgba=new Uint8Array(w*h*4);
   for(let p=0;p<w*h;p++){const c=bytes[offset+p];rgba.set([bytes[palette+c*3],bytes[palette+c*3+1],bytes[palette+c*3+2],(flags&64)&&c===255?0:255],p*4);}
   const map=new T.DataTexture(rgba,w,h);map.colorSpace=T.SRGBColorSpace;map.magFilter=T.LinearFilter;map.minFilter=T.LinearMipmapLinearFilter;map.generateMipmaps=true;map.needsUpdate=true;
-  const material=new T.MeshStandardMaterial({map,roughness:0.88,side:T.DoubleSide,alphaTest:flags&64?0.5:0});material.userData={w,h,name:str(o,64)};mats.push(material);
+  const material=new T.MeshLambertMaterial({map,side:T.DoubleSide,alphaTest:flags&64?0.5:0});material.userData={w,h,name:str(o,64)};mats.push(material);
  }
  if(!mats.length)throw Error('Не найдены встроенные текстуры');
  let triangles=0;
@@ -40,3 +40,4 @@ export function parseMDL(buffer, targetBones=null, sequence=0, body={}) {
  group.userData={bones,variants,triangles,materials:mats};return group;
 }
 export function disposeMDL(group){group.traverse(o=>o.geometry?.dispose());for(const m of group.userData.materials||[]){m.map?.dispose();m.dispose();}}
+
