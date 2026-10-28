@@ -10,11 +10,20 @@ export function setupPurchase(getSelected,isBusy){
  buy.removeAttribute('onclick');
  buy.onclick=event=>{
   event.preventDefault();
+  event.stopPropagation();
   const draft=purchaseDraft(getSelected(),seller);
   if(isBusy()||!draft){document.getElementById('toast').textContent=en()?'Select an accessory and wait for it to load.':'Выберите аксессуар и дождитесь его загрузки.';return;}
+  buy.href=draft.url;
   const tg=window.Telegram?.WebApp;
-  try{if(tg?.openTelegramLink){tg.openTelegramLink(draft.url);return;}}catch{}
+  try{
+   // iOS Mini App navigation can discard ChatTextInputState. Use the
+   // external URL route, which passes the draft to Telegram's URL handler.
+   if(tg?.platform==='ios'&&tg.openLink){
+    tg.openLink(draft.url,{try_browser:'safari'});
+    return;
+   }
+   if(tg?.openTelegramLink){tg.openTelegramLink(draft.url);return;}
+  }catch{}
   window.open(draft.url,'_blank','noopener,noreferrer');
  };
 }
-

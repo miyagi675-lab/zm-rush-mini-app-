@@ -1,16 +1,17 @@
-import {setupPurchase} from './purchase.js?v=2';
+import {setupPurchase} from './purchase.js?v=3';
 import {english} from './language.js?v=2';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
-import {parseMDL,disposeMDL} from './mdl.js?v=4';
+import {parseMDL,disposeMDL} from './mdl.js?v=5';
 import {entries,playerModels} from './catalog.js?v=2';
-import {loadModel as load} from './asset-loader.js';
+import {loadModel as load,prefetchModel} from './asset-loader.js?v=2';
 
 const $=id=>document.getElementById(id);
 const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГОЕ'};
 const fittedHats=new Map();
-function fittedHat(entry,nextBody){const key=player.id+':'+entry.id+':'+JSON.stringify(nextBody);const cached=fittedHats.get(key);if(cached){fittedHats.delete(key);fittedHats.set(key,cached);}return {key,cached};}
-function trimHats(){for(const [key,value] of fittedHats){if(fittedHats.size<=4)break;if(value!==hat){fittedHats.delete(key);disposeMDL(value);}}}
+const playerCache=new Map();
+function fittedHat(entry,nextBody,model=player){const key=model.id+':'+entry.id+':'+JSON.stringify(nextBody);const cached=fittedHats.get(key);if(cached){fittedHats.delete(key);fittedHats.set(key,cached);}return {key,cached};}
+function trimHats(){for(const [key,value] of fittedHats){if(fittedHats.size<=8)break;if(value!==hat){fittedHats.delete(key);disposeMDL(value);}}}
 const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
 const favorites=new Set(readJSON('zm-rush-favorites',[]));
 const slots=readJSON('zm-rush-slots',{a:null,b:null});
@@ -34,7 +35,7 @@ function renderCatalog(){
   const img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';img.width=256;img.height=256;img.src='assets/previews/'+e.id+'.webp';
   const name=document.createElement('span');name.className='item-name';name.textContent=e.name;
   const category=document.createElement('span');category.className='item-type';category.textContent=categories[e.category];
-  pick.append(img,name,category);pick.onclick=()=>selectLook(e,{},true);pick.onpointerenter=pick.onfocus=()=>{if(ready)load('hats/'+e.id+'.mdl').catch(()=>{});};
+  pick.append(img,name,category);pick.onclick=()=>selectLook(e,{},true);pick.onpointerenter=pick.onfocus=()=>{if(ready)prefetchModel('hats/'+e.id+'.mdl');};
   const fav=document.createElement('button');fav.className='favorite';fav.textContent=favorites.has(e.id)?'★':'☆';fav.title=favorites.has(e.id)?'Убрать из избранного':'Добавить в избранное';fav.setAttribute('aria-label',fav.title);fav.setAttribute('aria-pressed',String(favorites.has(e.id)));
   fav.onclick=ev=>{ev.stopPropagation();favorites.has(e.id)?favorites.delete(e.id):favorites.add(e.id);localStorage.setItem('zm-rush-favorites',JSON.stringify([...favorites]));renderCatalog();};
   card.append(pick,fav);if(current?.id===e.id){const check=document.createElement('span');check.className='check';check.textContent='✓';card.append(check);}$('items').append(card);
@@ -52,15 +53,16 @@ function frame(close=false){
 function setView(value){cameraView=value;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===value));frame(isClose());}
 function refreshSlots(){for(const key of ['a','b']){const button=$('slot-'+key),look=slots[key];button.setAttribute('aria-pressed',String(activeSlot===key));button.querySelector('span').textContent=look?.name||'Без шапки';}}
 function setBusy(value){$('save').disabled=value;$('snapshot').disabled=value;$('pause').disabled=value||motion==='static';$('player-model').disabled=value;}
+function progressFor(label){return ({percent})=>{if(!$('loading').hidden)$('loading').textContent=label+(percent?' '+percent+'%':'');};}
 async function selectLook(entry,nextBody={},writeSlot=true){
- if(!ready)return;const token=++ticket;$('loading').hidden=false;$('loading').textContent=entry?'Примеряем '+entry.name+'…':'Снимаем шапку…';setBusy(true);
+ if(!ready)return;const started=performance.now(),token=++ticket;$('loading').hidden=false;$('loading').textContent=entry?'Примеряем '+entry.name+'…':'Снимаем шапку…';setBusy(true);
  try{
-  let next=null,key;if(entry){const lookup=fittedHat(entry,nextBody);key=lookup.key;next=lookup.cached;if(!next){const buffer=await load('hats/'+entry.id+'.mdl');if(token!==ticket)return;next=parseMDL(buffer,ct.userData.bones,0,nextBody,player.hatScale);fittedHats.set(key,next);}}
+  let next=null,key;if(entry){const lookup=fittedHat(entry,nextBody);key=lookup.key;next=lookup.cached;if(!next){const buffer=await load('hats/'+entry.id+'.mdl',{onProgress:p=>{if(token===ticket)progressFor('Примеряем '+entry.name+'…')(p);}});if(token!==ticket)return;next=parseMDL(buffer,ct.userData.bones,0,nextBody,player.hatScale);fittedHats.set(key,next);}}
   if(token!==ticket)return;if(hat)rig.remove(hat);hat=next;if(hat)rig.add(hat);trimHats();current=entry;body=nextBody;
   $('selected-name').textContent=entry?.name||'Без шапки';$('detail-name').textContent=entry?.name||'Классическая модель';$('detail-file').textContent=entry?entry.id+'.mdl · '+player.name:'Модель '+player.name;$('variants').replaceChildren();
   for(const variant of hat?.userData.variants||[]){const label=document.createElement('label');label.textContent='Вариант';const select=document.createElement('select');variant.names.forEach((name,index)=>{const option=document.createElement('option');option.value=index;option.textContent=name;select.append(option);});select.value=body[variant.part]||0;select.onchange=()=>selectLook(current,{...body,[variant.part]:Number(select.value)},true);label.append(select);$('variants').append(label);}
   if(writeSlot){slots[activeSlot]=entry?{id:entry.id,name:entry.name,body:{...nextBody}}:null;localStorage.setItem('zm-rush-slots',JSON.stringify(slots));}
-  refreshSlots();syncSelection();toast('');try{telegram?.HapticFeedback?.selectionChanged();}catch{}
+  refreshSlots();syncSelection();toast('');performance.measure('zm-rush:accessory-ready',{start:started});try{telegram?.HapticFeedback?.selectionChanged();}catch{}
  }catch(e){console.error(e);toast(e.message+' — попробуйте ещё раз.');}finally{if(token===ticket){$('loading').hidden=true;setBusy(false);}}
 }
 function chooseSlot(key){activeSlot=key;refreshSlots();const look=slots[key],entry=look?entries.find(e=>e.id===look.id):null;selectLook(entry,look?.body||{},false);}
@@ -69,21 +71,22 @@ function updateAnimation(delta){if(!ready||!ct?.userData.updatePose)return;if(an
 function snapshot(){renderer.render(scene,camera);const url=renderer.domElement.toDataURL('image/png');$('photo').src=url;$('download-photo').href=url;$('photo-dialog').showModal();const share=$('share-photo');share.hidden=!navigator.share;share.onclick=async()=>{try{const blob=await (await fetch(url)).blob(),file=new File([blob],'zm-rush.png',{type:'image/png'});if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Мой образ ZM RUSH'});else await navigator.share({title:'Мой образ ZM RUSH',text:current?.name||player.name});}catch(e){if(e.name!=='AbortError')toast('Не удалось поделиться снимком.');}};}
 
 async function choosePlayer(id,initial=false){
- const nextPlayer=playerModels.find(m=>m.id===id)||playerModels[0],token=++playerTicket;
+ const started=performance.now(),nextPlayer=playerModels.find(m=>m.id===id)||playerModels[0],token=++playerTicket;
  ready=false;$('loading').hidden=false;$('loading').textContent='Загружаем '+nextPlayer.name+'…';setBusy(true);
  let next=null,nextHat=null;
  try{
-  next=parseMDL(await load(nextPlayer.file),null,1);
-  if(current)nextHat=parseMDL(await load('hats/'+current.id+'.mdl'),next.userData.bones,0,body,nextPlayer.hatScale);
-  if(token!==playerTicket){disposeMDL(next);if(nextHat)disposeMDL(nextHat);return;}
-  if(hat){rig.remove(hat);if(![...fittedHats.values()].includes(hat))disposeMDL(hat);}for(const cached of fittedHats.values())disposeMDL(cached);fittedHats.clear();if(ct){rig.remove(ct);disposeMDL(ct);}
-  ct=next;hat=nextHat;player=nextPlayer;rig.add(ct);if(hat){rig.add(hat);fittedHats.set(fittedHat(current,body).key,hat);}
+  next=playerCache.get(nextPlayer.id);
+  if(!next){next=parseMDL(await load(nextPlayer.file,{onProgress:p=>{if(token===playerTicket)progressFor('Загружаем '+nextPlayer.name+'…')(p);}}),null,1);playerCache.set(nextPlayer.id,next);}
+  if(current){const lookup=fittedHat(current,body,nextPlayer);nextHat=lookup.cached;if(!nextHat){nextHat=parseMDL(await load('hats/'+current.id+'.mdl'),next.userData.bones,0,body,nextPlayer.hatScale);fittedHats.set(lookup.key,nextHat);}}
+  if(token!==playerTicket)return;
+  if(hat)rig.remove(hat);if(ct)rig.remove(ct);
+  ct=next;hat=nextHat;player=nextPlayer;ct.userData.updatePose(1,0);rig.add(ct);if(hat){hat.userData.updatePose(1,0,ct.userData.bones);rig.add(hat);}trimHats();
   rig.position.y=0;rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(ct);rig.position.y=-bounds.min.y;rig.updateMatrixWorld(true);
   bounds.setFromObject(ct);modelHeight=bounds.max.y;modelHead.setFromMatrixPosition(ct.userData.bones.get('Bip01 Head')).applyMatrix4(rig.matrixWorld);
   animationTime=0;ready=true;frame(isClose());$('player-model').value=player.id;$('model-label').textContent=player.name;
   $('detail-name').textContent=current?.name||'Классическая модель';$('detail-file').textContent=current?current.id+'.mdl · '+player.name:'Модель '+player.name;
-  localStorage.setItem('zm-rush-player',JSON.stringify(player.id));
- }catch(e){if(next&&next!==ct)disposeMDL(next);if(nextHat&&nextHat!==hat)disposeMDL(nextHat);ready=!!ct;$('player-model').value=player.id;toast('Не удалось загрузить модель. Попробуйте ещё раз.');console.error(e);}
+  localStorage.setItem('zm-rush-player',JSON.stringify(player.id));performance.measure('zm-rush:model-ready',{start:started});
+ }catch(e){ready=!!ct;$('player-model').value=player.id;toast('Не удалось загрузить модель. Попробуйте ещё раз.');console.error(e);}
  finally{if(token===playerTicket){$('loading').hidden=ready;setBusy(!ready);}}
 }
 $('player-model').onchange=e=>choosePlayer(e.target.value);
@@ -102,8 +105,7 @@ try{
  rig=new T.Group();rig.rotation.x=-Math.PI/2;rig.position.y=37;scene.add(rig);const floor=new T.Mesh(new T.CylinderGeometry(27,29,1,64),new T.MeshLambertMaterial({color:0x34432e}));floor.position.y=-.2;scene.add(floor);const ring=new T.Mesh(new T.TorusGeometry(28,.12,8,96),new T.MeshBasicMaterial({color:0x88a65a}));ring.rotation.x=-Math.PI/2;ring.position.y=.35;scene.add(ring);const grid=new T.GridHelper(280,28,0x40503a,0x2a3829);grid.position.y=-.8;scene.add(grid);
  const resize=()=>{const {width,height}=$('viewport').getBoundingClientRect();renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe($('viewport'));resize();
  await choosePlayer(player.id,true);if(!ready)throw Error('Модель недоступна');
- let previous=performance.now();renderer.setAnimationLoop(now=>{const delta=Math.min((now-previous)/1000,.1);previous=now;updateAnimation(delta);if(!document.hidden){controls.update(delta);renderer.render(scene,camera);}});
+ let previous=performance.now();renderer.setAnimationLoop(now=>{const delta=Math.min((now-previous)/1000,.1);previous=now;if(!document.hidden){updateAnimation(delta);controls.update(delta);renderer.render(scene,camera);}});
  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();$('loading').hidden=false;$('loading').textContent='3D-показ прерван. Обновите приложение.';});
  const saved=readJSON('zm-rush-look',null);if(saved?.id){const entry=entries.find(e=>e.id===saved.id);if(entry)await selectLook(entry,saved.body||{},true);}
 }catch(e){$('loading').hidden=false;$('loading').textContent='Не удалось запустить 3D. Обновите приложение или откройте его в современном браузере.';console.error(e);}
-

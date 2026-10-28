@@ -1,0 +1,2 @@
+// Derived web assets; original game models remain untouched.
+export const modelAssets={"gign.mdl":"web-v2/gign.mdl.gz","models/dobby.mdl":"web-v2/models/dobby.mdl.gz","hats/batman.mdl":"web-v2/hats/batman.mdl.gz","hats/elder_mask_v2.mdl":"web-v2/hats/elder_mask_v2.mdl.gz","hats/gena.mdl":"web-v2/hats/gena.mdl.gz","hats/hockey_mask.mdl":"web-v2/hats/hockey_mask.mdl.gz","hats/pony_v2.mdl":"web-v2/hats/pony_v2.mdl.gz","hats/terrible.mdl":"web-v2/hats/terrible.mdl.gz","hats/tigr.mdl":"web-v2/hats/tigr.mdl.gz"};
