@@ -1,3 +1,4 @@
+import {setupPurchase} from './purchase.js?v=1';
 import {english} from './language.js?v=2';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
@@ -20,6 +21,7 @@ const telegram=window.Telegram?.WebApp;
 try{telegram?.ready();telegram?.expand();if(telegram?.isVersionAtLeast?.('6.1')){telegram.setHeaderColor('#101513');telegram.setBackgroundColor('#101513');}}catch{}
 
 const toast=text=>{$('toast').textContent=text;};
+setupPurchase(()=>current,()=>!ready||!$('loading').hidden);
 function syncSelection(){for(const card of $('items').children){const selected=card.dataset.id===current?.id;card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
 function renderCatalog(){
  const term=$('search').value.trim().toLocaleLowerCase('ru');
