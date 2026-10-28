@@ -58,4 +58,5 @@ export const entries=[...[['alkash','Алкаш','other'],['batman','Бэтме�
 ["t_pony_hat","Пони · новая версия","animals"],
 ["v_mask","Маска Гая Фокса","heroes"]
 ].map(([id,name,category])=>({id,name,category}));
-export const playerModels=[{id:'gign',name:'GIGN',file:'gign.mdl',hatScale:1},{id:'dobby',name:'Добби',file:'models/dobby.mdl',hatScale:{head:.8,body:.5}}];
+export const playerModels=[{id:'gign',name:'CT',file:'gign.mdl',hatScale:1},{id:'dobby',name:'Добби',file:'models/dobby.mdl',hatScale:{head:.8,body:.5}}];
+

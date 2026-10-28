@@ -1,7 +1,8 @@
+import {english} from './language.js?v=1';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=4';
-import {entries,playerModels} from './catalog.js?v=1';
+import {entries,playerModels} from './catalog.js?v=2';
 import {loadModel as load} from './asset-loader.js';
 
 const $=id=>document.getElementById(id);
@@ -22,7 +23,7 @@ const toast=text=>{$('toast').textContent=text;};
 function syncSelection(){for(const card of $('items').children){const selected=card.dataset.id===current?.id;card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
 function renderCatalog(){
  const term=$('search').value.trim().toLocaleLowerCase('ru');
- const visible=entries.filter(e=>(filter==='all'||filter==='favorites'||e.category===filter)&&(!term||(e.name+' '+e.id).toLocaleLowerCase('ru').includes(term))&&(filter!=='favorites'||favorites.has(e.id)));
+ const visible=entries.filter(e=>(filter==='all'||filter==='favorites'||e.category===filter)&&(!term||(e.name+' '+english(e.name)+' '+e.id).toLocaleLowerCase('ru').includes(term))&&(filter!=='favorites'||favorites.has(e.id)));
  $('items').replaceChildren();$('count').textContent=filter==='favorites'?visible.length+' избранных':visible.length+' / '+entries.length;
  $('empty').hidden=!!visible.length;$('empty').textContent=filter==='favorites'?'Добавь понравившиеся модели звёздочкой.':'Ничего не нашли. Попробуй другое название.';
  for(const e of visible){
@@ -103,3 +104,4 @@ try{
  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();$('loading').hidden=false;$('loading').textContent='3D-показ прерван. Обновите приложение.';});
  const saved=readJSON('zm-rush-look',null);if(saved?.id){const entry=entries.find(e=>e.id===saved.id);if(entry)await selectLook(entry,saved.body||{},true);}
 }catch(e){$('loading').hidden=false;$('loading').textContent='Не удалось запустить 3D. Обновите приложение или откройте его в современном браузере.';console.error(e);}
+
