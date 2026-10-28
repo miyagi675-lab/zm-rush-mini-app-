@@ -1,4 +1,4 @@
-import {setupPurchase} from './purchase.js?v=1';
+import {setupPurchase} from './purchase.js?v=2';
 import {english} from './language.js?v=2';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
