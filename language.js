@@ -1,4 +1,5 @@
-const pairs=`Выбор модели|Select model
+const pairs=`Купить|Buy
+Выбор модели|Select model
 Подборка|Collection
 КОЛЛЕКЦИЯ|COLLECTION
 шапок|hats

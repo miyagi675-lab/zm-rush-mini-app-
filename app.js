@@ -1,4 +1,4 @@
-import {english} from './language.js?v=1';
+import {english} from './language.js?v=2';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=4';
