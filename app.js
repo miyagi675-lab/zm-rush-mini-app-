@@ -101,7 +101,7 @@ document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.len
 refreshSlots();syncFilters();renderCatalog();
 try{
  renderer=new T.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;$('viewport').append(renderer.domElement);
- scene=new T.Scene();lighting(scene);camera=new T.PerspectiveCamera(40,1,.1,500);controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.enablePan=false;controls.maxPolarAngle=Math.PI*.49;controls.autoRotateSpeed=.7;
+ scene=new T.Scene();lighting(scene);camera=new T.PerspectiveCamera(40,1,.1,500);controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.enablePan=false;controls.maxPolarAngle=Math.PI*.49;controls.autoRotateSpeed=1.4;
  rig=new T.Group();rig.rotation.x=-Math.PI/2;rig.position.y=37;scene.add(rig);const floor=new T.Mesh(new T.CylinderGeometry(27,29,1,64),new T.MeshLambertMaterial({color:0x34432e}));floor.position.y=-.2;scene.add(floor);const ring=new T.Mesh(new T.TorusGeometry(28,.12,8,96),new T.MeshBasicMaterial({color:0x88a65a}));ring.rotation.x=-Math.PI/2;ring.position.y=.35;scene.add(ring);const grid=new T.GridHelper(280,28,0x40503a,0x2a3829);grid.position.y=-.8;scene.add(grid);
  const resize=()=>{const {width,height}=$('viewport').getBoundingClientRect();renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe($('viewport'));resize();
  await choosePlayer(player.id,true);if(!ready)throw Error('Модель недоступна');
