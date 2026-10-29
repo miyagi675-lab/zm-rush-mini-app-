@@ -32,7 +32,7 @@ function renderCatalog(){
  for(const e of visible){
   const card=document.createElement('article');card.className='item'+(current?.id===e.id?' selected':'');card.dataset.id=e.id;
   const pick=document.createElement('button');pick.className='item-pick';pick.setAttribute('aria-label','Примерить: '+e.name);pick.setAttribute('aria-pressed',String(current?.id===e.id));
-  const img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';img.width=256;img.height=256;img.src='assets/previews/'+e.id+'.webp';
+  const img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';img.width=256;img.height=256;img.src='assets/previews-v2/'+e.id+'.webp';
   const name=document.createElement('span');name.className='item-name';name.textContent=e.name;
   const category=document.createElement('span');category.className='item-type';category.textContent=categories[e.category];
   pick.append(img,name,category);pick.onclick=()=>selectLook(e,{},true);pick.onpointerenter=pick.onfocus=()=>{if(ready)prefetchModel('hats/'+e.id+'.mdl');};
