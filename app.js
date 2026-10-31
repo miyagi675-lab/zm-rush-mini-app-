@@ -1,9 +1,9 @@
 import {setupPurchase} from './purchase.js?v=3';
-import {english} from './language.js?v=6';
+import {english} from './language.js?v=7';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=6';
-import {entries,playerModels} from './catalog.js?v=8';
+import {entries,playerModels} from './catalog.js?v=9';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=3';
 
 const $=id=>document.getElementById(id);

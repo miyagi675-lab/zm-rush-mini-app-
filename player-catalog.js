@@ -311,18 +311,18 @@ export const extraPlayerModels=[
  },
  {
   "id": "p_hatake",
-  "name": "Какаши · с баннером",
-  "file": "players-v1/p_hatake.mdl",
+  "name": "Какаши",
+  "file": "players-v1/p_hatake_nobanner-v1.mdl",
   "hatScale": {
    "head": 1.423,
-   "body": 2,
+   "body": 1.137,
    "headOffset": [
     2.371,
     -0.783,
     0.892
    ]
   },
-  "nameEn": "Kakashi · banner"
+  "nameEn": "Kakashi"
  },
  {
   "id": "p_itachi",
