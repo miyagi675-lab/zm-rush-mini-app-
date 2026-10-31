@@ -1178,6 +1178,16 @@ export const extraPlayerModels=[
    "body": 0.9030607746493432
   },
   "nameEn": "Sonic · small"
+ },
+ {
+  "id": "p_itsuki",
+  "name": "Ицуки",
+  "nameEn": "Itsuki",
+  "file": "players-v1/p_itsuki.mdl",
+  "hatScale": {
+   "head": 2.3755413378904455,
+   "body": 1.1153958843600364
+  }
  }
 ];
 export const playerNamePairs=extraPlayerModels.map(model=>[model.name,model.nameEn]);
