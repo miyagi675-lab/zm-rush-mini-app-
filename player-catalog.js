@@ -14,7 +14,7 @@ export const extraPlayerModels=[
   "name": "Парень в кепке",
   "file": "players-v1/p_anb_pm_skin6.mdl",
   "hatScale": {
-   "head": 1.310593784338375,
+   "head": 1.1,
    "body": 1.056991854021626
   },
   "nameEn": "Boy in a cap"
@@ -24,7 +24,7 @@ export const extraPlayerModels=[
   "name": "Анубис",
   "file": "players-v1/p_anubis.mdl",
   "hatScale": {
-   "head": 1.3950439356368272,
+   "head": 1.113,
    "body": 0.9709477886076896
   },
   "nameEn": "Anubis"
@@ -54,8 +54,13 @@ export const extraPlayerModels=[
   "name": "Барбара",
   "file": "players-v1/p_barbara.mdl",
   "hatScale": {
-   "head": 1.6728597827281595,
-   "body": 1.1032580098798197
+   "head": 0.922,
+   "body": 1.1032580098798197,
+   "headOffset": [
+    -0.359,
+    2.633,
+    -0.056
+   ]
   },
   "nameEn": "Barbara"
  },
@@ -64,7 +69,7 @@ export const extraPlayerModels=[
   "name": "Бэтмен",
   "file": "players-v1/p_bombardier_batman.mdl",
   "hatScale": {
-   "head": 1.320206363824996,
+   "head": 0.913,
    "body": 1.1826323847616873
   },
   "nameEn": "Batman"
@@ -84,8 +89,13 @@ export const extraPlayerModels=[
   "name": "Пеннивайз",
   "file": "players-v1/p_clown.mdl",
   "hatScale": {
-   "head": 2.4444513318213423,
-   "body": 1.3553904871786795
+   "head": 1.595,
+   "body": 1.3553904871786795,
+   "headOffset": [
+    -0.445,
+    0.055,
+    -0.153
+   ]
   },
   "nameEn": "Pennywise"
  },
@@ -94,8 +104,13 @@ export const extraPlayerModels=[
   "name": "Коко",
   "file": "players-v1/p_coko_female.mdl",
   "hatScale": {
-   "head": 1.495779124048042,
-   "body": 1.0009232797930319
+   "head": 1.115,
+   "body": 1.0009232797930319,
+   "headOffset": [
+    -2.263,
+    1.625,
+    0.112
+   ]
   },
   "nameEn": "Coko"
  },
@@ -104,7 +119,7 @@ export const extraPlayerModels=[
   "name": "Метрокоп · Half-Life 2",
   "file": "players-v1/p_combinepolice_v2.mdl",
   "hatScale": {
-   "head": 1.7951907619295793,
+   "head": 1.172,
    "body": 1.0541318770377868
   },
   "nameEn": "Metrocop · Half-Life 2"
@@ -114,7 +129,7 @@ export const extraPlayerModels=[
   "name": "Банан",
   "file": "players-v1/p_cs_dream_id5_1.mdl",
   "hatScale": {
-   "head": 1.462046884440756,
+   "head": 0.795,
    "body": 1.0289552134852256
   },
   "nameEn": "Banana"
@@ -124,7 +139,7 @@ export const extraPlayerModels=[
   "name": "Дэдпул · синий малыш",
   "file": "players-v1/p_deadpool_malysh_blue.mdl",
   "hatScale": {
-   "head": 1.2622795638732818,
+   "head": 1.085,
    "body": 0.7622198135622086
   },
   "nameEn": "Deadpool · blue mini"
@@ -134,7 +149,7 @@ export const extraPlayerModels=[
   "name": "Дэт Блейд",
   "file": "players-v1/p_death_blade.mdl",
   "hatScale": {
-   "head": 1.2375322716653765,
+   "head": 0.907,
    "body": 1.0236128222557805
   },
   "nameEn": "Death Blade"
@@ -144,7 +159,7 @@ export const extraPlayerModels=[
   "name": "Дональд Дак",
   "file": "players-v1/p_donald.mdl",
   "hatScale": {
-   "head": 2.572230676477364,
+   "head": 1.722,
    "body": 1.234183834445092
   },
   "nameEn": "Donald Duck"
@@ -164,8 +179,13 @@ export const extraPlayerModels=[
   "name": "Хацунэ Мику",
   "file": "players-v1/p_female.mdl",
   "hatScale": {
-   "head": 5.310378977648899,
-   "body": 1.0849454326014365
+   "head": 0.98,
+   "body": 1.0849454326014365,
+   "headOffset": [
+    -1.318,
+    4.019,
+    -0.206
+   ]
   },
   "nameEn": "Hatsune Miku"
  },
@@ -184,7 +204,7 @@ export const extraPlayerModels=[
   "name": "Фрэнк · HD",
   "file": "players-v1/p_frank.mdl",
   "hatScale": {
-   "head": 1.951884930686896,
+   "head": 1.505,
    "body": 1.0203705449258127
   },
   "nameEn": "Frank · HD"
@@ -194,8 +214,13 @@ export const extraPlayerModels=[
   "name": "Гаара · в костюме",
   "file": "players-v1/p_gaara_suit_v2.mdl",
   "hatScale": {
-   "head": 1.6097256887582194,
-   "body": 1.0747452089863438
+   "head": 1.122,
+   "body": 1.0747452089863438,
+   "headOffset": [
+    -1.213,
+    0.299,
+    -0.181
+   ]
   },
   "nameEn": "Gaara · suit"
  },
@@ -214,8 +239,13 @@ export const extraPlayerModels=[
   "name": "Ичиго Куросаки",
   "file": "players-v1/p_gign2.mdl",
   "hatScale": {
-   "head": 1.3344641081703865,
-   "body": 1.0654274417508034
+   "head": 1.108,
+   "body": 1.0654274417508034,
+   "headOffset": [
+    1.974,
+    0.442,
+    -0.315
+   ]
   },
   "nameEn": "Ichigo Kurosaki"
  },
@@ -244,7 +274,7 @@ export const extraPlayerModels=[
   "name": "Гоку",
   "file": "players-v1/p_goku.mdl",
   "hatScale": {
-   "head": 2.164695141784733,
+   "head": 1.728,
    "body": 1.2444242661999119
   },
   "nameEn": "Goku"
@@ -254,7 +284,7 @@ export const extraPlayerModels=[
   "name": "Том · Том и Джерри",
   "file": "players-v1/p_gsg9.mdl",
   "hatScale": {
-   "head": 1.4949081357695893,
+   "head": 1.054,
    "body": 0.7922423885714623
   },
   "nameEn": "Tom · Tom and Jerry"
@@ -284,8 +314,13 @@ export const extraPlayerModels=[
   "name": "Какаши · с баннером",
   "file": "players-v1/p_hatake.mdl",
   "hatScale": {
-   "head": 6,
-   "body": 2
+   "head": 1.423,
+   "body": 2,
+   "headOffset": [
+    2.371,
+    -0.783,
+    0.892
+   ]
   },
   "nameEn": "Kakashi · banner"
  },
@@ -324,8 +359,13 @@ export const extraPlayerModels=[
   "name": "Девушка с кошачьими ушками",
   "file": "players-v1/p_jbmmgirlnew_s.mdl",
   "hatScale": {
-   "head": 2.7532296921851134,
-   "body": 1.103822031328755
+   "head": 0.871,
+   "body": 1.103822031328755,
+   "headOffset": [
+    -1.935,
+    2.521,
+    -0.129
+   ]
   },
   "nameEn": "Cat-eared girl"
  },
@@ -344,8 +384,13 @@ export const extraPlayerModels=[
   "name": "Какаши Хатакэ",
   "file": "players-v1/p_kakashi.mdl",
   "hatScale": {
-   "head": 1.6210858474179528,
-   "body": 1.1544508164928806
+   "head": 1.29,
+   "body": 1.1544508164928806,
+   "headOffset": [
+    1.866,
+    -0.406,
+    0.628
+   ]
   },
   "nameEn": "Kakashi Hatake"
  },
@@ -354,7 +399,7 @@ export const extraPlayerModels=[
   "name": "Кадзэ · CSO2",
   "file": "players-v1/p_kaze.mdl",
   "hatScale": {
-   "head": 1.1169774608736727,
+   "head": 0.909,
    "body": 1.0741245208248016
   },
   "nameEn": "Kaze · CSO2"
@@ -364,8 +409,13 @@ export const extraPlayerModels=[
   "name": "Кирара",
   "file": "players-v1/p_kirara.mdl",
   "hatScale": {
-   "head": 2.2779826242606633,
-   "body": 1.1235547834827053
+   "head": 0.794,
+   "body": 1.1235547834827053,
+   "headOffset": [
+    0.024,
+    2.32,
+    -0.075
+   ]
   },
   "nameEn": "Kirara"
  },
@@ -394,8 +444,13 @@ export const extraPlayerModels=[
   "name": "Кизуна",
   "file": "players-v1/p_kizuna_cs.mdl",
   "hatScale": {
-   "head": 1.8105071225940637,
-   "body": 1.020818741090836
+   "head": 0.849,
+   "body": 1.020818741090836,
+   "headOffset": [
+    -0.643,
+    2.126,
+    0.013
+   ]
   },
   "nameEn": "Kizuna"
  },
@@ -434,7 +489,7 @@ export const extraPlayerModels=[
   "name": "Мадара Учиха",
   "file": "players-v1/p_madara.mdl",
   "hatScale": {
-   "head": 2.625029691879155,
+   "head": 1.265,
    "body": 1.085060796430034
   },
   "nameEn": "Madara Uchiha"
@@ -444,8 +499,13 @@ export const extraPlayerModels=[
   "name": "Макима",
   "file": "players-v1/p_makima.mdl",
   "hatScale": {
-   "head": 1.4416068319176198,
-   "body": 0.9354249892696258
+   "head": 0.741,
+   "body": 0.9354249892696258,
+   "headOffset": [
+    -0.749,
+    2.062,
+    -0.037
+   ]
   },
   "nameEn": "Makima"
  },
@@ -454,7 +514,7 @@ export const extraPlayerModels=[
   "name": "Скрудж Макдак",
   "file": "players-v1/p_mcduck.mdl",
   "hatScale": {
-   "head": 2.3188537094921906,
+   "head": 1.89,
    "body": 1.3436191928002141
   },
   "nameEn": "Scrooge McDuck"
@@ -464,8 +524,13 @@ export const extraPlayerModels=[
   "name": "Мэдзиро Брайт",
   "file": "players-v1/p_mejiro_bright.mdl",
   "hatScale": {
-   "head": 2.6710435566059334,
-   "body": 1.1204518348939958
+   "head": 0.759,
+   "body": 1.1204518348939958,
+   "headOffset": [
+    -2.099,
+    2.766,
+    -0.08
+   ]
   },
   "nameEn": "Mejiro Bright"
  },
@@ -484,7 +549,7 @@ export const extraPlayerModels=[
   "name": "Халк · мини",
   "file": "players-v1/p_minihalk.mdl",
   "hatScale": {
-   "head": 1.0501555739236599,
+   "head": 0.886,
    "body": 0.7387275311254686
   },
   "nameEn": "Hulk · mini"
@@ -524,8 +589,13 @@ export const extraPlayerModels=[
   "name": "Мунмен",
   "file": "players-v1/p_moonman.mdl",
   "hatScale": {
-   "head": 2.3281440392097306,
-   "body": 1.2651095236501386
+   "head": 1.405,
+   "body": 1.2651095236501386,
+   "headOffset": [
+    -0.181,
+    0.366,
+    0.241
+   ]
   },
   "nameEn": "Moonman"
  },
@@ -544,7 +614,7 @@ export const extraPlayerModels=[
   "name": "Обито · Джуби",
   "file": "players-v1/p_obito_juubi.mdl",
   "hatScale": {
-   "head": 1.379860160288863,
+   "head": 1.14,
    "body": 1.1405555355933406
   },
   "nameEn": "Obito · Ten-Tails"
@@ -554,8 +624,13 @@ export const extraPlayerModels=[
   "name": "Йода",
   "file": "players-v1/p_ousii1.mdl",
   "hatScale": {
-   "head": 3.0631559481466346,
-   "body": 1.1304866421607234
+   "head": 1.632,
+   "body": 1.1304866421607234,
+   "headOffset": [
+    -0.604,
+    2.581,
+    -0.056
+   ]
   },
   "nameEn": "Yoda"
  },
@@ -564,8 +639,13 @@ export const extraPlayerModels=[
   "name": "Паймон",
   "file": "players-v1/p_paimon.mdl",
   "hatScale": {
-   "head": 2.7809585273686213,
-   "body": 1.323039085634293
+   "head": 1.256,
+   "body": 1.323039085634293,
+   "headOffset": [
+    1.093,
+    3.926,
+    -0.064
+   ]
   },
   "nameEn": "Paimon"
  },
@@ -574,7 +654,7 @@ export const extraPlayerModels=[
   "name": "Пейн",
   "file": "players-v1/p_pain.mdl",
   "hatScale": {
-   "head": 1.4764069063330783,
+   "head": 1.094,
    "body": 1.0805458253429783
   },
   "nameEn": "Pain"
@@ -594,8 +674,13 @@ export const extraPlayerModels=[
   "name": "Чейнс · PAYDAY",
   "file": "players-v1/p_player_123.mdl",
   "hatScale": {
-   "head": 1.0355234476640547,
-   "body": 0.980436509655368
+   "head": 0.862,
+   "body": 0.980436509655368,
+   "headOffset": [
+    -0.836,
+    1.881,
+    -0.086
+   ]
   },
   "nameEn": "Chains · PAYDAY"
  },
@@ -604,8 +689,13 @@ export const extraPlayerModels=[
   "name": "Пурпурное сердце",
   "file": "players-v1/p_purple_hy.mdl",
   "hatScale": {
-   "head": 4.281759463077051,
-   "body": 1.0851383209228516
+   "head": 1.167,
+   "body": 1.0851383209228516,
+   "headOffset": [
+    -1.219,
+    2.423,
+    -0.067
+   ]
   },
   "nameEn": "Purple Heart"
  },
@@ -634,7 +724,7 @@ export const extraPlayerModels=[
   "name": "Римуру Темпест",
   "file": "players-v1/p_rimurus.mdl",
   "hatScale": {
-   "head": 2.0998158030650997,
+   "head": 1.343,
    "body": 0.994878061356083
   },
   "nameEn": "Rimuru Tempest"
@@ -654,8 +744,13 @@ export const extraPlayerModels=[
   "name": "Хацунэ Мику · худи",
   "file": "players-v1/p_ruoyin.mdl",
   "hatScale": {
-   "head": 5.030489914217986,
-   "body": 1.1405671027398878
+   "head": 0.735,
+   "body": 1.1405671027398878,
+   "headOffset": [
+    -0.937,
+    0.342,
+    0.048
+   ]
   },
   "nameEn": "Hatsune Miku · hoodie"
  },
@@ -664,8 +759,13 @@ export const extraPlayerModels=[
   "name": "Сара · костюм с цветами",
   "file": "players-v1/p_sara14.mdl",
   "hatScale": {
-   "head": 2.073250432096808,
-   "body": 0.9672226752004316
+   "head": 1.19,
+   "body": 0.9672226752004316,
+   "headOffset": [
+    -0.268,
+    1.347,
+    0.232
+   ]
   },
   "nameEn": "Sara · floral outfit"
  },
@@ -684,8 +784,13 @@ export const extraPlayerModels=[
   "name": "Девушка в голубом платье",
   "file": "players-v1/p_sas1.mdl",
   "hatScale": {
-   "head": 2.494601770013479,
-   "body": 1.038546162266885
+   "head": 1.47,
+   "body": 1.038546162266885,
+   "headOffset": [
+    -2.149,
+    -0.647,
+    0.195
+   ]
   },
   "nameEn": "Girl in a blue dress"
  },
@@ -704,7 +809,7 @@ export const extraPlayerModels=[
   "name": "Саске Учиха",
   "file": "players-v1/p_sasuke.mdl",
   "hatScale": {
-   "head": 1.5850406809538944,
+   "head": 1.164,
    "body": 1.0641641924458165
   },
   "nameEn": "Sasuke Uchiha"
@@ -744,8 +849,13 @@ export const extraPlayerModels=[
   "name": "Арона",
   "file": "players-v1/p_simen_checkins.mdl",
   "hatScale": {
-   "head": 1.8724036741400798,
-   "body": 0.9776846977972216
+   "head": 1.039,
+   "body": 0.9776846977972216,
+   "headOffset": [
+    -0.866,
+    2.242,
+    -0.064
+   ]
   },
   "nameEn": "Arona"
  },
@@ -754,7 +864,7 @@ export const extraPlayerModels=[
   "name": "Скирк",
   "file": "players-v1/p_skirk.mdl",
   "hatScale": {
-   "head": 4.206512115518476,
+   "head": 1.345,
    "body": 1.138509750366211
   },
   "nameEn": "Skirk"
@@ -784,7 +894,7 @@ export const extraPlayerModels=[
   "name": "Рафталия",
   "file": "players-v1/p_terror.mdl",
   "hatScale": {
-   "head": 2.2938649286318085,
+   "head": 1.213,
    "body": 0.7984703586947534
   },
   "nameEn": "Raphtalia"
@@ -804,8 +914,13 @@ export const extraPlayerModels=[
   "name": "Ванилла",
   "file": "players-v1/p_tg_cutes.mdl",
   "hatScale": {
-   "head": 4.132950797824468,
-   "body": 0.9193616067209551
+   "head": 0.807,
+   "body": 0.9193616067209551,
+   "headOffset": [
+    -0.564,
+    2.482,
+    -0.005
+   ]
   },
   "nameEn": "Vanilla"
  },
@@ -824,8 +939,13 @@ export const extraPlayerModels=[
   "name": "Городская разведчица · аниме",
   "file": "players-v1/p_tg_sara.mdl",
   "hatScale": {
-   "head": 1.396955709212934,
-   "body": 1.0536769128614856
+   "head": 1.19,
+   "body": 1.0536769128614856,
+   "headOffset": [
+    0.361,
+    1.931,
+    -0.359
+   ]
   },
   "nameEn": "Urban Tracker · anime"
  },
@@ -864,8 +984,13 @@ export const extraPlayerModels=[
   "name": "Шериф Вуди",
   "file": "players-v1/p_urban.mdl",
   "hatScale": {
-   "head": 1.8547393404663777,
-   "body": 1.0505913765199724
+   "head": 1.416,
+   "body": 1.0505913765199724,
+   "headOffset": [
+    -0.254,
+    0.837,
+    -0.227
+   ]
   },
   "nameEn": "Sheriff Woody"
  },
@@ -874,7 +999,7 @@ export const extraPlayerModels=[
   "name": "Багз Банни",
   "file": "players-v1/p_urban1.mdl",
   "hatScale": {
-   "head": 3.429265937277559,
+   "head": 2.062,
    "body": 1.5268984148579259
   },
   "nameEn": "Bugs Bunny"
@@ -884,7 +1009,7 @@ export const extraPlayerModels=[
   "name": "Слэш",
   "file": "players-v1/p_urban3.mdl",
   "hatScale": {
-   "head": 1.9997747629080105,
+   "head": 1.464,
    "body": 1.1460339946131552
   },
   "nameEn": "Slash"
@@ -904,7 +1029,7 @@ export const extraPlayerModels=[
   "name": "Вектор",
   "file": "players-v1/p_vector.mdl",
   "hatScale": {
-   "head": 1.855945571815328,
+   "head": 0.989,
    "body": 1.0099332870975617
   },
   "nameEn": "Vector"
@@ -914,8 +1039,13 @@ export const extraPlayerModels=[
   "name": "Венти",
   "file": "players-v1/p_venti.mdl",
   "hatScale": {
-   "head": 1.7452379947656464,
-   "body": 1.1550503392373361
+   "head": 0.837,
+   "body": 1.1550503392373361,
+   "headOffset": [
+    1.303,
+    2.836,
+    -0.075
+   ]
   },
   "nameEn": "Venti"
  },
@@ -924,8 +1054,13 @@ export const extraPlayerModels=[
   "name": "Агент Смит",
   "file": "players-v1/p_vip.mdl",
   "hatScale": {
-   "head": 1.338658600170844,
-   "body": 0.9929605914700416
+   "head": 0.905,
+   "body": 0.9929605914700416,
+   "headOffset": [
+    0.193,
+    1.291,
+    -0.298
+   ]
   },
   "nameEn": "Agent Smith"
  },
@@ -944,7 +1079,7 @@ export const extraPlayerModels=[
   "name": "Персонаж Minecraft",
   "file": "players-v1/p_vip1.mdl",
   "hatScale": {
-   "head": 1.9298006493789799,
+   "head": 1.665,
    "body": 1.1267062156431136
   },
   "nameEn": "Minecraft character"
@@ -954,8 +1089,13 @@ export const extraPlayerModels=[
   "name": "Кибербоец",
   "file": "players-v1/p_vip_lb1.mdl",
   "hatScale": {
-   "head": 1.1382666996505795,
-   "body": 1.038865643162881
+   "head": 0.913,
+   "body": 1.038865643162881,
+   "headOffset": [
+    0.132,
+    0.375,
+    -0.07
+   ]
   },
   "nameEn": "Cyber soldier"
  },
@@ -964,7 +1104,7 @@ export const extraPlayerModels=[
   "name": "Валуиджи",
   "file": "players-v1/p_waluigi.mdl",
   "hatScale": {
-   "head": 2.264391074690662,
+   "head": 1.737,
    "body": 1.1984652857626639
   },
   "nameEn": "Waluigi"
@@ -974,7 +1114,7 @@ export const extraPlayerModels=[
   "name": "Оборотень",
   "file": "players-v1/p_werewolf.mdl",
   "hatScale": {
-   "head": 1.506269834155408,
+   "head": 1.022,
    "body": 1.0006195191414125
   },
   "nameEn": "Werewolf"
@@ -984,7 +1124,7 @@ export const extraPlayerModels=[
   "name": "Волк-ангел",
   "file": "players-v1/p_wolfie_angel.mdl",
   "hatScale": {
-   "head": 1.4214795722652855,
+   "head": 0.997,
    "body": 1.5469862414944557
   },
   "nameEn": "Wolf angel"
@@ -1004,7 +1144,7 @@ export const extraPlayerModels=[
   "name": "Котори Ицука",
   "file": "players-v1/p_xiannv.mdl",
   "hatScale": {
-   "head": 3.8803173099304504,
+   "head": 1.412,
    "body": 1.176227661871141
   },
   "nameEn": "Kotori Itsuka"
@@ -1014,8 +1154,13 @@ export const extraPlayerModels=[
   "name": "Янь Фэй",
   "file": "players-v1/p_yanfei.mdl",
   "hatScale": {
-   "head": 1.4309472386929867,
-   "body": 1.1271225098640687
+   "head": 0.904,
+   "body": 1.1271225098640687,
+   "headOffset": [
+    -0.352,
+    3.647,
+    -0.049
+   ]
   },
   "nameEn": "Yanfei"
  },
@@ -1024,8 +1169,13 @@ export const extraPlayerModels=[
   "name": "Ёимия",
   "file": "players-v1/p_yoimiya.mdl",
   "hatScale": {
-   "head": 2.152259082138883,
-   "body": 1.1889260815035911
+   "head": 0.969,
+   "body": 1.1889260815035911,
+   "headOffset": [
+    -1.167,
+    1.632,
+    -0.221
+   ]
   },
   "nameEn": "Yoimiya"
  },
@@ -1044,7 +1194,7 @@ export const extraPlayerModels=[
   "name": "Бендер",
   "file": "players-v1/p_ze_summowner.mdl",
   "hatScale": {
-   "head": 2.4162189143210577,
+   "head": 1.549,
    "body": 1.3129068190051663
   },
   "nameEn": "Bender"
@@ -1054,8 +1204,13 @@ export const extraPlayerModels=[
   "name": "Чжун Ли",
   "file": "players-v1/p_zhongli.mdl",
   "hatScale": {
-   "head": 2.494025832987839,
-   "body": 1.058590458285424
+   "head": 0.676,
+   "body": 1.058590458285424,
+   "headOffset": [
+    1.445,
+    2.285,
+    -0.085
+   ]
   },
   "nameEn": "Zhongli"
  },
@@ -1064,7 +1219,7 @@ export const extraPlayerModels=[
   "name": "Хаос",
   "file": "players-v1/p_chaos.mdl",
   "hatScale": {
-   "head": 2.9997963016892006,
+   "head": 1.669,
    "body": 1.320593249413275
   },
   "nameEn": "Chaos"
@@ -1074,8 +1229,13 @@ export const extraPlayerModels=[
   "name": "Эспио",
   "file": "players-v1/p_espio.mdl",
   "hatScale": {
-   "head": 3.820147913836054,
-   "body": 1.6269840117423766
+   "head": 2.253,
+   "body": 1.6269840117423766,
+   "headOffset": [
+    -2.438,
+    0.848,
+    0.43
+   ]
   },
   "nameEn": "Espio"
  },
@@ -1084,8 +1244,13 @@ export const extraPlayerModels=[
   "name": "Наклз",
   "file": "players-v1/p_knucles.mdl",
   "hatScale": {
-   "head": 3.663345169555431,
-   "body": 1.4371361886301348
+   "head": 1.211,
+   "body": 1.4371361886301348,
+   "headOffset": [
+    -1.468,
+    9.587,
+    -0.472
+   ]
   },
   "nameEn": "Knuckles"
  },
@@ -1094,8 +1259,13 @@ export const extraPlayerModels=[
   "name": "Мефилес · форма Шэдоу",
   "file": "players-v1/p_mephiles_shadow_form.mdl",
   "hatScale": {
-   "head": 4.345776465785459,
-   "body": 1.5014378947596396
+   "head": 2.1,
+   "body": 1.5014378947596396,
+   "headOffset": [
+    -0.906,
+    4.955,
+    0.226
+   ]
   },
   "nameEn": "Mephiles · Shadow form"
  },
@@ -1104,8 +1274,13 @@ export const extraPlayerModels=[
   "name": "Мефилес",
   "file": "players-v1/p_mephiles.mdl",
   "hatScale": {
-   "head": 4.097252039928455,
-   "body": 1.330384531328755
+   "head": 2.082,
+   "body": 1.330384531328755,
+   "headOffset": [
+    -6.959,
+    -10.835,
+    0.745
+   ]
   },
   "nameEn": "Mephiles"
  },
@@ -1114,8 +1289,13 @@ export const extraPlayerModels=[
   "name": "Шэдоу",
   "file": "players-v1/p_shadow.mdl",
   "hatScale": {
-   "head": 4.345776465785459,
-   "body": 1.5014378947596396
+   "head": 2.1,
+   "body": 1.5014378947596396,
+   "headOffset": [
+    -0.906,
+    4.955,
+    0.226
+   ]
   },
   "nameEn": "Shadow"
  },
@@ -1144,8 +1324,13 @@ export const extraPlayerModels=[
   "name": "Супер Шэдоу",
   "file": "players-v1/p_super_shadow.mdl",
   "hatScale": {
-   "head": 4.344997662397791,
-   "body": 1.5013980250204764
+   "head": 2.1,
+   "body": 1.5013980250204764,
+   "headOffset": [
+    -0.904,
+    4.95,
+    0.226
+   ]
   },
   "nameEn": "Super Shadow"
  },
@@ -1154,8 +1339,13 @@ export const extraPlayerModels=[
   "name": "Шэдоу · маленький",
   "file": "players-v1/p_small_shadow.mdl",
   "hatScale": {
-   "head": 2.606801083363194,
-   "body": 0.9007191811838458
+   "head": 1.26,
+   "body": 0.9007191811838458,
+   "headOffset": [
+    -0.547,
+    2.964,
+    0.132
+   ]
   },
   "nameEn": "Shadow · small"
  },
@@ -1185,8 +1375,13 @@ export const extraPlayerModels=[
   "nameEn": "Itsuki",
   "file": "players-v1/p_itsuki.mdl",
   "hatScale": {
-   "head": 2.3755413378904455,
-   "body": 1.1153958843600364
+   "head": 0.783,
+   "body": 1.1153958843600364,
+   "headOffset": [
+    -0.239,
+    1.75,
+    0.074
+   ]
   }
  }
 ];
