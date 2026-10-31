@@ -1,3 +1,4 @@
+import {playerNamePairs} from './player-catalog.js?v=2';
 const pairs=`Купить|Buy
 Выбор модели|Select model
 Подборка|Collection
@@ -155,8 +156,9 @@ const pairs=`Купить|Buy
 Маска Губки Боба|SpongeBob mask
 Меч|Sword
 Тигр|Tiger
-Маска Гая Фокса|Guy Fawkes mask`.split('\n').map(line=>line.split('|')).sort((a,b)=>b[0].length-a[0].length);
-export const english=text=>pairs.reduce((value,[ru,en])=>value.split(ru).join(en),text);
+Маска Гая Фокса|Guy Fawkes mask`.split('\n').map(line=>line.split('|')).concat(playerNamePairs).sort((a,b)=>b[0].length-a[0].length);
+const exactTranslations=new Map(pairs);
+export const english=text=>exactTranslations.get(text)??pairs.reduce((value,[ru,en])=>value.split(ru).join(en),text);
 let language='ru';try{language=localStorage.getItem('zm-rush-language')==='en'?'en':'ru';}catch{}
 const originals=new WeakMap();
 function translateNode(node,key,value){let saved=originals.get(node)||{};if(!saved[key]||saved[key].shown!==value)saved[key]={source:value};const item=saved[key];item.shown=language==='en'?english(item.source):item.source;originals.set(node,saved);return item.shown;}
@@ -172,4 +174,3 @@ function applyLanguage(){
 const switcher=document.createElement('div');switcher.style.cssText='display:flex;gap:8px;align-items:center';switcher.setAttribute('aria-label','Language');
 for(const [code,label] of [['ru','RU'],['en','ENG']]){const button=document.createElement('button');button.textContent=label;button.dataset.language=code;button.style.cssText='padding:8px 12px;border:1px solid #88a65a;border-radius:12px;background:#1c291e;color:#d6e1cc;cursor:pointer';button.onclick=()=>{language=code;try{localStorage.setItem('zm-rush-language',code);}catch{}applyLanguage();};switcher.append(button);}
 document.querySelector('header').append(switcher);applyLanguage();
-
