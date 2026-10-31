@@ -19,7 +19,7 @@ const favorites=new Set(readJSON('zm-rush-favorites',[]));
 const slots=readJSON('zm-rush-slots',{a:null,b:null});
 let ct,hat,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filter='all',ready=false;
 let player=playerModels.find(m=>m.id===readJSON('zm-rush-player','gign'))||playerModels[0],modelHeight=62,modelHead=new T.Vector3(0,56,0),playerTicket=0;
-let activeSlot='a',animationTime=0,animationSpeed=1,animationPlaying=true,motion='idle1',cameraView='angle';
+let activeSlot='a',animationTime=0,animationSpeed=1,animationPlaying=true,motion='walk',cameraView='angle';
 const telegram=window.Telegram?.WebApp;
 try{telegram?.ready();telegram?.expand();if(telegram?.isVersionAtLeast?.('6.1')){telegram.setHeaderColor('#101513');telegram.setBackgroundColor('#101513');}}catch{}
 
