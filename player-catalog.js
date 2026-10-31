@@ -1219,7 +1219,7 @@ export const extraPlayerModels=[
   "name": "Хаос",
   "file": "players-v1/p_chaos.mdl",
   "hatScale": {
-   "head": 1.669,
+   "head": 2.9997963016892006,
    "body": 1.320593249413275
   },
   "nameEn": "Chaos"
@@ -1229,13 +1229,8 @@ export const extraPlayerModels=[
   "name": "Эспио",
   "file": "players-v1/p_espio.mdl",
   "hatScale": {
-   "head": 2.253,
-   "body": 1.6269840117423766,
-   "headOffset": [
-    -2.438,
-    0.848,
-    0.43
-   ]
+   "head": 3.820147913836054,
+   "body": 1.6269840117423766
   },
   "nameEn": "Espio"
  },
@@ -1244,13 +1239,8 @@ export const extraPlayerModels=[
   "name": "Наклз",
   "file": "players-v1/p_knucles.mdl",
   "hatScale": {
-   "head": 1.211,
-   "body": 1.4371361886301348,
-   "headOffset": [
-    -1.468,
-    9.587,
-    -0.472
-   ]
+   "head": 3.663345169555431,
+   "body": 1.4371361886301348
   },
   "nameEn": "Knuckles"
  },
@@ -1259,13 +1249,8 @@ export const extraPlayerModels=[
   "name": "Мефилес · форма Шэдоу",
   "file": "players-v1/p_mephiles_shadow_form.mdl",
   "hatScale": {
-   "head": 2.1,
-   "body": 1.5014378947596396,
-   "headOffset": [
-    -0.906,
-    4.955,
-    0.226
-   ]
+   "head": 4.345776465785459,
+   "body": 1.5014378947596396
   },
   "nameEn": "Mephiles · Shadow form"
  },
@@ -1274,13 +1259,8 @@ export const extraPlayerModels=[
   "name": "Мефилес",
   "file": "players-v1/p_mephiles.mdl",
   "hatScale": {
-   "head": 2.082,
-   "body": 1.330384531328755,
-   "headOffset": [
-    -6.959,
-    -10.835,
-    0.745
-   ]
+   "head": 4.097252039928455,
+   "body": 1.330384531328755
   },
   "nameEn": "Mephiles"
  },
@@ -1289,13 +1269,8 @@ export const extraPlayerModels=[
   "name": "Шэдоу",
   "file": "players-v1/p_shadow.mdl",
   "hatScale": {
-   "head": 2.1,
-   "body": 1.5014378947596396,
-   "headOffset": [
-    -0.906,
-    4.955,
-    0.226
-   ]
+   "head": 4.345776465785459,
+   "body": 1.5014378947596396
   },
   "nameEn": "Shadow"
  },
@@ -1324,13 +1299,8 @@ export const extraPlayerModels=[
   "name": "Супер Шэдоу",
   "file": "players-v1/p_super_shadow.mdl",
   "hatScale": {
-   "head": 2.1,
-   "body": 1.5013980250204764,
-   "headOffset": [
-    -0.904,
-    4.95,
-    0.226
-   ]
+   "head": 4.344997662397791,
+   "body": 1.5013980250204764
   },
   "nameEn": "Super Shadow"
  },
@@ -1339,13 +1309,8 @@ export const extraPlayerModels=[
   "name": "Шэдоу · маленький",
   "file": "players-v1/p_small_shadow.mdl",
   "hatScale": {
-   "head": 1.26,
-   "body": 0.9007191811838458,
-   "headOffset": [
-    -0.547,
-    2.964,
-    0.132
-   ]
+   "head": 2.606801083363194,
+   "body": 0.9007191811838458
   },
   "nameEn": "Shadow · small"
  },
