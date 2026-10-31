@@ -1239,8 +1239,11 @@ export const extraPlayerModels=[
   "name": "Наклз",
   "file": "players-v1/p_knucles.mdl",
   "hatScale": {
-   "head": 3.663345169555431,
+   "head": 2.8,
    "body": 1.4371361886301348
+  },
+  "hatScaleOverrides": {
+   "cheburashka": 2.4
   },
   "nameEn": "Knuckles"
  },

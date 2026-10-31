@@ -1,4 +1,4 @@
-import {playerNamePairs} from './player-catalog.js?v=6';
+import {playerNamePairs} from './player-catalog.js?v=7';
 const pairs=`Купить|Buy
 Выбор модели|Select model
 Подборка|Collection

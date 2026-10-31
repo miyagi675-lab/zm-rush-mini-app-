@@ -1,9 +1,9 @@
 import {setupPurchase} from './purchase.js?v=3';
-import {english} from './language.js?v=7';
+import {english} from './language.js?v=8';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=6';
-import {entries,playerModels} from './catalog.js?v=9';
+import {entries,playerModels} from './catalog.js?v=10';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=3';
 
 const $=id=>document.getElementById(id);
@@ -13,6 +13,7 @@ const playerCache=new Map();
 function ensureHead(model){if(model.userData.bones.has('Bip01 Head'))return;const parent=model.userData.bones.get('Bip01 Neck')||model.userData.bones.values().next().value;if(!parent)return;const bounds=new T.Box3().setFromObject(model),offset=new T.Matrix4().makeTranslation(0,0,Math.max(0,bounds.max.z-parent.elements[14]-3)),matrix=parent.clone().multiply(offset);model.userData.bones.set('Bip01 Head',matrix);const update=model.userData.updatePose;model.userData.updatePose=(...args)=>{update(...args);matrix.copy(parent).multiply(offset);};}
 function trimPlayers(){for(const [id,model] of playerCache){if(playerCache.size<=2)break;if(id===player.id)continue;playerCache.delete(id);disposeMDL(model);for(const [key,look] of fittedHats)if(key.startsWith(id+':')){fittedHats.delete(key);disposeMDL(look);}}}
 function fittedHat(entry,nextBody,model=player){const key=model.id+':'+entry.id+':'+JSON.stringify(nextBody);const cached=fittedHats.get(key);if(cached){fittedHats.delete(key);fittedHats.set(key,cached);}return {key,cached};}
+function hatScaleFor(model,entry){const head=model.hatScaleOverrides?.[entry.id];if(head===undefined)return model.hatScale;return typeof model.hatScale==='number'?{head,body:model.hatScale}:{...model.hatScale,head};}
 function trimHats(){for(const [key,value] of fittedHats){if(fittedHats.size<=8)break;if(value!==hat){fittedHats.delete(key);disposeMDL(value);}}}
 const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
 const favorites=new Set(readJSON('zm-rush-favorites',[]));
@@ -59,7 +60,7 @@ function progressFor(label){return ({percent})=>{if(!$('loading').hidden)$('load
 async function selectLook(entry,nextBody={},writeSlot=true){
  if(!ready)return;const started=performance.now(),token=++ticket;$('loading').hidden=false;$('loading').textContent=entry?'Примеряем '+entry.name+'…':'Снимаем шапку…';setBusy(true);
  try{
-  let next=null,key;if(entry){const lookup=fittedHat(entry,nextBody);key=lookup.key;next=lookup.cached;if(!next){const buffer=await load('hats/'+entry.id+'.mdl',{onProgress:p=>{if(token===ticket)progressFor('Примеряем '+entry.name+'…')(p);}});if(token!==ticket)return;next=parseMDL(buffer,ct.userData.bones,0,nextBody,player.hatScale);fittedHats.set(key,next);}}
+  let next=null,key;if(entry){const lookup=fittedHat(entry,nextBody);key=lookup.key;next=lookup.cached;if(!next){const buffer=await load('hats/'+entry.id+'.mdl',{onProgress:p=>{if(token===ticket)progressFor('Примеряем '+entry.name+'…')(p);}});if(token!==ticket)return;next=parseMDL(buffer,ct.userData.bones,0,nextBody,hatScaleFor(player,entry));fittedHats.set(key,next);}}
   if(token!==ticket)return;if(hat)rig.remove(hat);hat=next;if(hat)rig.add(hat);trimHats();current=entry;body=nextBody;
   $('selected-name').textContent=entry?.name||'Без шапки';$('detail-name').textContent=entry?.name||'Классическая модель';$('detail-file').textContent=entry?entry.id+'.mdl · '+player.name:'Модель '+player.name;$('variants').replaceChildren();
   for(const variant of hat?.userData.variants||[]){const label=document.createElement('label');label.textContent='Вариант';const select=document.createElement('select');variant.names.forEach((name,index)=>{const option=document.createElement('option');option.value=index;option.textContent=name;select.append(option);});select.value=body[variant.part]||0;select.onchange=()=>selectLook(current,{...body,[variant.part]:Number(select.value)},true);label.append(select);$('variants').append(label);}
@@ -81,7 +82,7 @@ async function choosePlayer(id,initial=false){
   if(next){playerCache.delete(nextPlayer.id);playerCache.set(nextPlayer.id,next);}
   if(!next){next=parseMDL(await load(nextPlayer.file,{onProgress:p=>{if(token===playerTicket)progressFor('Загружаем '+nextPlayer.name+'…')(p);}}),null,1);playerCache.set(nextPlayer.id,next);}
   ensureHead(next);
-  if(current){const lookup=fittedHat(current,body,nextPlayer);nextHat=lookup.cached;if(!nextHat){nextHat=parseMDL(await load('hats/'+current.id+'.mdl'),next.userData.bones,0,body,nextPlayer.hatScale);fittedHats.set(lookup.key,nextHat);}}
+  if(current){const lookup=fittedHat(current,body,nextPlayer);nextHat=lookup.cached;if(!nextHat){nextHat=parseMDL(await load('hats/'+current.id+'.mdl'),next.userData.bones,0,body,hatScaleFor(nextPlayer,current));fittedHats.set(lookup.key,nextHat);}}
   if(token!==playerTicket)return;
   if(hat)rig.remove(hat);if(ct)rig.remove(ct);
   ct=next;hat=nextHat;player=nextPlayer;ct.userData.updatePose(1,0);rig.add(ct);if(hat){hat.userData.updatePose(1,0,ct.userData.bones);rig.add(hat);}trimHats();trimPlayers();
