@@ -3,13 +3,15 @@ import {english} from './language.js?v=2';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=5';
-import {entries,playerModels} from './catalog.js?v=3';
-import {loadModel as load,prefetchModel} from './asset-loader.js?v=2';
+import {entries,playerModels} from './catalog.js?v=4';
+import {loadModel as load,prefetchModel} from './asset-loader.js?v=3';
 
 const $=id=>document.getElementById(id);
 const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГОЕ'};
 const fittedHats=new Map();
 const playerCache=new Map();
+function ensureHead(model){if(model.userData.bones.has('Bip01 Head'))return;const parent=model.userData.bones.get('Bip01 Neck')||model.userData.bones.values().next().value;if(!parent)return;const bounds=new T.Box3().setFromObject(model),offset=new T.Matrix4().makeTranslation(0,0,Math.max(0,bounds.max.z-parent.elements[14]-3)),matrix=parent.clone().multiply(offset);model.userData.bones.set('Bip01 Head',matrix);const update=model.userData.updatePose;model.userData.updatePose=(...args)=>{update(...args);matrix.copy(parent).multiply(offset);};}
+function trimPlayers(){for(const [id,model] of playerCache){if(playerCache.size<=2)break;if(id===player.id)continue;playerCache.delete(id);disposeMDL(model);for(const [key,look] of fittedHats)if(key.startsWith(id+':')){fittedHats.delete(key);disposeMDL(look);}}}
 function fittedHat(entry,nextBody,model=player){const key=model.id+':'+entry.id+':'+JSON.stringify(nextBody);const cached=fittedHats.get(key);if(cached){fittedHats.delete(key);fittedHats.set(key,cached);}return {key,cached};}
 function trimHats(){for(const [key,value] of fittedHats){if(fittedHats.size<=8)break;if(value!==hat){fittedHats.delete(key);disposeMDL(value);}}}
 const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
@@ -76,13 +78,15 @@ async function choosePlayer(id,initial=false){
  let next=null,nextHat=null;
  try{
   next=playerCache.get(nextPlayer.id);
+  if(next){playerCache.delete(nextPlayer.id);playerCache.set(nextPlayer.id,next);}
   if(!next){next=parseMDL(await load(nextPlayer.file,{onProgress:p=>{if(token===playerTicket)progressFor('Загружаем '+nextPlayer.name+'…')(p);}}),null,1);playerCache.set(nextPlayer.id,next);}
+  ensureHead(next);
   if(current){const lookup=fittedHat(current,body,nextPlayer);nextHat=lookup.cached;if(!nextHat){nextHat=parseMDL(await load('hats/'+current.id+'.mdl'),next.userData.bones,0,body,nextPlayer.hatScale);fittedHats.set(lookup.key,nextHat);}}
   if(token!==playerTicket)return;
   if(hat)rig.remove(hat);if(ct)rig.remove(ct);
-  ct=next;hat=nextHat;player=nextPlayer;ct.userData.updatePose(1,0);rig.add(ct);if(hat){hat.userData.updatePose(1,0,ct.userData.bones);rig.add(hat);}trimHats();
+  ct=next;hat=nextHat;player=nextPlayer;ct.userData.updatePose(1,0);rig.add(ct);if(hat){hat.userData.updatePose(1,0,ct.userData.bones);rig.add(hat);}trimHats();trimPlayers();
   rig.position.y=0;rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(ct);rig.position.y=-bounds.min.y;rig.updateMatrixWorld(true);
-  bounds.setFromObject(ct);modelHeight=bounds.max.y;modelHead.setFromMatrixPosition(ct.userData.bones.get('Bip01 Head')).applyMatrix4(rig.matrixWorld);
+  bounds.setFromObject(ct);modelHeight=bounds.max.y;const head=ct.userData.bones.get('Bip01 Head');if(head)modelHead.setFromMatrixPosition(head).applyMatrix4(rig.matrixWorld);else bounds.getCenter(modelHead).setY(modelHeight*.85);
   animationTime=0;ready=true;frame(isClose());$('player-model').value=player.id;$('model-label').textContent=player.name;
   $('detail-name').textContent=current?.name||'Классическая модель';$('detail-file').textContent=current?current.id+'.mdl · '+player.name:'Модель '+player.name;
   localStorage.setItem('zm-rush-player',JSON.stringify(player.id));performance.measure('zm-rush:model-ready',{start:started});
@@ -97,6 +101,7 @@ $('slot-a').onclick=()=>chooseSlot('a');$('slot-b').onclick=()=>chooseSlot('b');
 $('save').onclick=()=>{try{localStorage.setItem('zm-rush-look',JSON.stringify({id:current?.id||null,body}));toast('Образ сохранён на этом устройстве.');}catch{toast('Не удалось сохранить образ.');}};
 $('snapshot').onclick=snapshot;$('close-photo').onclick=()=>$('photo-dialog').close();$('photo-dialog').addEventListener('click',e=>{if(e.target===$('photo-dialog'))$('photo-dialog').close();});
 document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();$('search').focus();}});
+const playerOptions=document.createDocumentFragment();for(const model of playerModels){const option=document.createElement('option');option.value=model.id;option.textContent=model.name;playerOptions.append(option);}$('player-model').replaceChildren(playerOptions);
 document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.length);$('player-model').value=player.id;
 refreshSlots();syncFilters();renderCatalog();
 try{
