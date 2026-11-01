@@ -1,10 +1,11 @@
 import {setupPurchase} from './purchase.js?v=3';
-import {english} from './language.js?v=8';
+import {english} from './language.js?v=9';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=6';
 import {entries,playerModels} from './catalog.js?v=10';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=3';
+import {setupModelBrowser} from './model-browser.js?v=1';
 
 const $=id=>document.getElementById(id);
 const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГОЕ'};
@@ -18,7 +19,7 @@ function trimHats(){for(const [key,value] of fittedHats){if(fittedHats.size<=8)b
 const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
 const favorites=new Set(readJSON('zm-rush-favorites',[]));
 const slots=readJSON('zm-rush-slots',{a:null,b:null});
-let ct,hat,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filter='all',ready=false;
+let ct,hat,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filter='all',ready=false,modelBrowser=null;
 let player=playerModels.find(m=>m.id===readJSON('zm-rush-player','gign'))||playerModels[0],modelHeight=62,modelHead=new T.Vector3(0,56,0),playerTicket=0;
 let activeSlot='a',animationTime=0,animationSpeed=1,animationPlaying=true,motion='walk',cameraView='angle';
 const telegram=window.Telegram?.WebApp;
@@ -55,7 +56,7 @@ function frame(close=false){
 }
 function setView(value){cameraView=value;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===value));frame(isClose());}
 function refreshSlots(){for(const key of ['a','b']){const button=$('slot-'+key),look=slots[key];button.setAttribute('aria-pressed',String(activeSlot===key));button.querySelector('span').textContent=look?.name||'Без шапки';}}
-function setBusy(value){$('save').disabled=value;$('snapshot').disabled=value;$('pause').disabled=value||motion==='static';$('player-model').disabled=value;}
+function setBusy(value){$('save').disabled=value;$('snapshot').disabled=value;$('pause').disabled=value||motion==='static';$('player-model').disabled=value;modelBrowser?.setBusy(value);}
 function progressFor(label){return ({percent})=>{if(!$('loading').hidden)$('loading').textContent=label+(percent?' '+percent+'%':'');};}
 async function selectLook(entry,nextBody={},writeSlot=true){
  if(!ready)return;const started=performance.now(),token=++ticket;$('loading').hidden=false;$('loading').textContent=entry?'Примеряем '+entry.name+'…':'Снимаем шапку…';setBusy(true);
@@ -91,6 +92,7 @@ async function choosePlayer(id,initial=false){
   animationTime=0;ready=true;frame(isClose());$('player-model').value=player.id;$('model-label').textContent=player.name;
   $('detail-name').textContent=current?.name||'Классическая модель';$('detail-file').textContent=current?current.id+'.mdl · '+player.name:'Модель '+player.name;
   localStorage.setItem('zm-rush-player',JSON.stringify(player.id));performance.measure('zm-rush:model-ready',{start:started});
+  modelBrowser?.setSelected(player.id,!initial);
  }catch(e){ready=!!ct;$('player-model').value=player.id;toast('Не удалось загрузить модель. Попробуйте ещё раз.');console.error(e);}
  finally{if(token===playerTicket){$('loading').hidden=ready;setBusy(!ready);}}
 }
@@ -101,10 +103,11 @@ $('motion').onchange=e=>setMotion(e.target.value);$('speed').onchange=e=>animati
 $('slot-a').onclick=()=>chooseSlot('a');$('slot-b').onclick=()=>chooseSlot('b');
 $('save').onclick=()=>{try{localStorage.setItem('zm-rush-look',JSON.stringify({id:current?.id||null,body}));toast('Образ сохранён на этом устройстве.');}catch{toast('Не удалось сохранить образ.');}};
 $('snapshot').onclick=snapshot;$('close-photo').onclick=()=>$('photo-dialog').close();$('photo-dialog').addEventListener('click',e=>{if(e.target===$('photo-dialog'))$('photo-dialog').close();});
-document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();$('search').focus();}});
+document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();$($('models-panel').hidden?'search':'model-search').focus();}});
 const playerOptions=document.createDocumentFragment();for(const model of playerModels){const option=document.createElement('option');option.value=model.id;option.textContent=model.name;playerOptions.append(option);}$('player-model').replaceChildren(playerOptions);
 document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.length);$('player-model').value=player.id;
 refreshSlots();syncFilters();renderCatalog();
+modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,onChoose:async id=>{await choosePlayer(id);return player.id===id;}});
 try{
  renderer=new T.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;$('viewport').append(renderer.domElement);
  scene=new T.Scene();lighting(scene);camera=new T.PerspectiveCamera(40,1,.1,500);controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.enablePan=false;controls.maxPolarAngle=Math.PI*.49;controls.autoRotateSpeed=2.1;

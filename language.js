@@ -1,5 +1,36 @@
 import {playerNamePairs} from './player-catalog.js?v=7';
-const pairs=`Купить|Buy
+const pairs=`Каталог моделей|Model catalog
+Открыть каталог моделей|Open model catalog
+Каталоги|Catalogs
+Шапки|Hats
+Модели|Models
+Поиск моделей|Search models
+Найти персонажа|Find a character
+Категории моделей|Model categories
+Недавние|Recent
+Тактические|Tactical
+Аниме|Anime
+Игры|Games
+Кино и мультфильмы|Film & cartoons
+моделей в каталоге|models in catalog
+Сортировка моделей|Sort models
+Порядок|Sort
+В коллекции|Collection order
+По имени|By name
+Выбрать модель: |Select model: 
+Добавить модель в избранное: |Add model to favorites: 
+Убрать модель из избранного: |Remove model from favorites: 
+Смотреть в 3D|View in 3D
+Загрузка…|Loading…
+Выбрано|Selected
+В избранном пока пусто|No favorite models yet
+Здесь появятся выбранные модели|Your recent models will appear here
+Модель не найдена|No models found
+Нажми на звёздочку у понравившегося персонажа.|Tap the star on a character you like.
+Выбери персонажа — он сохранится в этом списке.|Choose a character to add it to this list.
+Попробуй другое имя или сбрось фильтры.|Try another name or reset the filters.
+Показать все модели|Show all models
+Купить|Buy
 Выбор модели|Select model
 Подборка|Collection
 КОЛЛЕКЦИЯ|COLLECTION
@@ -172,5 +203,5 @@ function applyLanguage(){
  observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-label','title','placeholder','alt']});
 }
 const switcher=document.createElement('div');switcher.style.cssText='display:flex;gap:8px;align-items:center';switcher.setAttribute('aria-label','Language');
-for(const [code,label] of [['ru','RU'],['en','ENG']]){const button=document.createElement('button');button.textContent=label;button.dataset.language=code;button.style.cssText='padding:8px 12px;border:1px solid #88a65a;border-radius:12px;background:#1c291e;color:#d6e1cc;cursor:pointer';button.onclick=()=>{language=code;try{localStorage.setItem('zm-rush-language',code);}catch{}applyLanguage();};switcher.append(button);}
+for(const [code,label] of [['ru','RU'],['en','ENG']]){const button=document.createElement('button');button.textContent=label;button.dataset.language=code;button.style.cssText='padding:8px 12px;border:1px solid #88a65a;border-radius:12px;background:#1c291e;color:#d6e1cc;cursor:pointer';button.onclick=()=>{language=code;try{localStorage.setItem('zm-rush-language',code);}catch{}applyLanguage();window.dispatchEvent(new CustomEvent('zm-rush:languagechange',{detail:language}));};switcher.append(button);}
 document.querySelector('header').append(switcher);applyLanguage();
