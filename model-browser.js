@@ -10,15 +10,22 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
  const list=$('model-items'),search=$('model-search'),filters=$('model-filters'),opener=$('open-models');
  const displayName=model=>document.documentElement.lang==='en'?(model.nameEn||english(model.name)):model.name;
  function button(text,fn){const el=document.createElement('button');el.type='button';el.textContent=text;el.onclick=fn;return el;}
- function showTab(tab,focus=false){
-  const wasModels=$('tab-models').getAttribute('aria-selected')==='true';
+ function showTab(tab,focus=false,resetScroll=true){
   for(const name of ['hats','models']){const active=name===tab;$('tab-'+name).setAttribute('aria-selected',String(active));$('tab-'+name).tabIndex=active?0:-1;$(name+'-panel').hidden=!active;}
   opener.setAttribute('aria-expanded',String(tab==='models'));
   document.body.classList.toggle('model-catalog-open',tab==='models');
   if(tab==='models'&&!rendered)render();
-  if(focus)$('tab-'+tab).focus();
-  if(tab==='models'&&matchMedia('(max-width:800px)').matches)$('catalog-tabs').scrollIntoView({block:'start',behavior:'auto'});
-  if(tab==='hats'&&wasModels&&matchMedia('(max-width:800px)').matches)document.querySelector('.studio').scrollIntoView({block:'start',behavior:'auto'});
+  if(focus)$('tab-'+tab).focus({preventScroll:true});
+  if(resetScroll){
+   $(tab==='models'?'model-items':'items').scrollTop=0;
+   if(matchMedia('(max-width:800px)').matches){
+    // Use the catalog's normal position: the sticky tab bar can stay at the
+    // screen edge even when the first row is far above the current viewport.
+    const catalogTop=document.querySelector('.catalog').getBoundingClientRect().top+window.scrollY;
+    const previewHeight=tab==='hats'?document.querySelector('.studio').getBoundingClientRect().height:0;
+    window.scrollTo({top:Math.max(0,catalogTop-previewHeight-12),behavior:'auto'});
+   }
+  }
  }
  $('model-total').textContent=models.length;
  $('tab-model-count').textContent=models.length;
@@ -49,7 +56,7 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
   $('model-sort').disabled=category==='recent';const fragment=document.createDocumentFragment();
   for(const model of visible){
    const group=modelGroupById.get(model.id),card=document.createElement('article');card.className='model-card';card.dataset.modelId=model.id;
-   const returnToPreview=()=>{if(matchMedia('(max-width:800px)').matches){showTab('hats');const studio=document.querySelector('.studio');studio.focus({preventScroll:true});studio.scrollIntoView({block:'start',behavior:'auto'});}};
+   const returnToPreview=()=>{if(matchMedia('(max-width:800px)').matches){showTab('hats',false,false);const studio=document.querySelector('.studio');studio.focus({preventScroll:true});studio.scrollIntoView({block:'start',behavior:'auto'});}};
    const pick=button('',async()=>{if(busy)return;if(model.id===selectedId){returnToPreview();return;}
     pending=model.id;setBusy(true);try{if(await onChoose(model.id)!==false)returnToPreview();}finally{pending=null;setBusy(false);}
    });pick.className='model-pick';pick.setAttribute('aria-label','Выбрать модель: '+model.name);
@@ -74,6 +81,6 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
  search.oninput=render;$('model-sort').onchange=render;
  $('model-reset').onclick=()=>{search.value='';category='all';render();};
  window.addEventListener('zm-rush:languagechange',()=>{if(rendered)render();});
- updateCurrent();showTab('hats');
+ updateCurrent();showTab('hats',false,false);
  return {setBusy,setSelected,showTab};
 }
