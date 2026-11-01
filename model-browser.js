@@ -19,13 +19,15 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
   if(resetScroll){
    $(tab==='models'?'model-items':'items').scrollTop=0;
    if(matchMedia('(max-width:800px)').matches){
-    // Use the catalog's normal position: the sticky tab bar can stay at the
-    // screen edge even when the first row is far above the current viewport.
     const catalogTop=document.querySelector('.catalog').getBoundingClientRect().top+window.scrollY;
-    const previewHeight=tab==='hats'?document.querySelector('.studio').getBoundingClientRect().height:0;
-    window.scrollTo({top:Math.max(0,catalogTop-previewHeight-12),behavior:'auto'});
+    const previewHeight=document.querySelector('.studio').getBoundingClientRect().height;
+    const start=Math.max(0,catalogTop-previewHeight-12);
+    // Switching tabs keeps the preview in place and only returns upward if
+    // the catalog had already been scrolled beyond its first row.
+    if(window.scrollY>start)window.scrollTo({top:start,behavior:'auto'});
    }
   }
+  updateBackToTop();
  }
  $('model-total').textContent=models.length;
  $('tab-model-count').textContent=models.length;
@@ -81,6 +83,12 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
  search.oninput=render;$('model-sort').onchange=render;
  $('model-reset').onclick=()=>{search.value='';category='all';render();};
  window.addEventListener('zm-rush:languagechange',()=>{if(rendered)render();});
+ const topButton=$('back-to-top');let scrollFrame=0;
+ function updateBackToTop(){const activeList=$('models-panel').hidden?$('items'):list;topButton.hidden=Math.max(window.scrollY,activeList.scrollTop)<=Math.max(240,window.innerHeight*.5);}
+ function scheduleScrollUpdate(){if(scrollFrame)return;scrollFrame=requestAnimationFrame(()=>{scrollFrame=0;updateBackToTop();});}
+ window.addEventListener('scroll',scheduleScrollUpdate,{passive:true});window.addEventListener('resize',scheduleScrollUpdate);
+ for(const grid of [$('items'),list])grid.addEventListener('scroll',scheduleScrollUpdate,{passive:true});
+ topButton.onclick=()=>{for(const grid of [$('items'),list])grid.scrollTop=0;window.scrollTo({top:0,behavior:'auto'});document.querySelector('.brand').focus({preventScroll:true});updateBackToTop();};
  updateCurrent();showTab('hats',false,false);
  return {setBusy,setSelected,showTab};
 }

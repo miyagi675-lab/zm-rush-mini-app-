@@ -1,5 +1,7 @@
 import {playerNamePairs} from './player-catalog.js?v=7';
-const pairs=`Каталог моделей|Model catalog
+const pairs=`Вернуться наверх|Back to top
+Наверх|Top
+Каталог моделей|Model catalog
 Открыть каталог моделей|Open model catalog
 Каталоги|Catalogs
 Шапки|Hats
