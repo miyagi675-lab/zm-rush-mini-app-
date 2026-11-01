@@ -58,9 +58,8 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
   $('model-sort').disabled=category==='recent';const fragment=document.createDocumentFragment();
   for(const model of visible){
    const group=modelGroupById.get(model.id),card=document.createElement('article');card.className='model-card';card.dataset.modelId=model.id;
-   const returnToPreview=()=>{if(matchMedia('(max-width:800px)').matches){showTab('hats',false,false);const studio=document.querySelector('.studio');studio.focus({preventScroll:true});studio.scrollIntoView({block:'start',behavior:'auto'});}};
-   const pick=button('',async()=>{if(busy)return;if(model.id===selectedId){returnToPreview();return;}
-    pending=model.id;setBusy(true);try{if(await onChoose(model.id)!==false)returnToPreview();}finally{pending=null;setBusy(false);}
+   const pick=button('',async()=>{if(busy||model.id===selectedId)return;
+    pending=model.id;setBusy(true);try{await onChoose(model.id);}finally{pending=null;setBusy(false);}
    });pick.className='model-pick';pick.setAttribute('aria-label','Выбрать модель: '+model.name);
    const picture=document.createElement('div');picture.className='model-picture';
    const img=document.createElement('img');img.src=modelPreview(model.id);img.alt='';img.loading='lazy';img.decoding='async';img.width=320;img.height=280;
