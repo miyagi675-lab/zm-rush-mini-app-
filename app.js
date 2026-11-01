@@ -1,11 +1,12 @@
 import {setupPurchase} from './purchase.js?v=3';
-import {english} from './language.js?v=10';
+import {english} from './language.js?v=11';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=6';
 import {entries,playerModels} from './catalog.js?v=10';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=3';
 import {setupModelBrowser} from './model-browser.js?v=4';
+import {modelPriceLabel} from './model-prices.js?v=1';
 
 const $=id=>document.getElementById(id);
 const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГОЕ'};
@@ -90,6 +91,7 @@ async function choosePlayer(id,initial=false){
   rig.position.y=0;rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(ct);rig.position.y=-bounds.min.y;rig.updateMatrixWorld(true);
   bounds.setFromObject(ct);modelHeight=bounds.max.y;const head=ct.userData.bones.get('Bip01 Head');if(head)modelHead.setFromMatrixPosition(head).applyMatrix4(rig.matrixWorld);else bounds.getCenter(modelHead).setY(modelHeight*.85);
   animationTime=0;ready=true;frame(isClose());$('player-model').value=player.id;$('model-label').textContent=player.name;
+  const price=modelPriceLabel(player.id);$('model-price').textContent=price;$('model-price').hidden=!price;
   $('detail-name').textContent=current?.name||'Классическая модель';$('detail-file').textContent=current?current.id+'.mdl · '+player.name:'Модель '+player.name;
   localStorage.setItem('zm-rush-player',JSON.stringify(player.id));performance.measure('zm-rush:model-ready',{start:started});
   modelBrowser?.setSelected(player.id,!initial);

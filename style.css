@@ -23,3 +23,6 @@
 
 
 .back-to-top{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:20;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 16px;border:1px solid #ddff98;border-radius:28px;background:var(--lime);color:#1e2c13;font-size:12px;font-weight:650;box-shadow:0 5px 24px #0007;cursor:pointer}.back-to-top>span:first-child{font-size:23px;line-height:1}.back-to-top:hover{background:#dcff98}.back-to-top[hidden]{display:none}
+
+/* The selected player price shares the model label typography and color. */
+.studio-top{gap:12px;align-items:baseline}.live{flex-shrink:0}.model-identity{display:flex;align-items:baseline;justify-content:flex-end;gap:4px 12px;min-width:0;max-width:65%;text-align:right}.model-identity #model-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#model-price{flex-shrink:0;white-space:nowrap;animation:model-price-pulse 2.2s ease-in-out infinite}#model-price[hidden]{display:none}@keyframes model-price-pulse{0%,100%{opacity:.4}50%{opacity:1}}@media(prefers-reduced-motion:reduce){#model-price{animation:none}}
