@@ -1,10 +1,11 @@
 export const modelGroups=[
+ {id:'small',name:'Маленькие скины',collection:true,models:['dobby','p_enot_blue','p_deadpool_malysh_blue','p_chick','p_gsg9','p_minihalk','p_vip1','p_small_sonic','p_sas','p_cs_dream_id5_1']},
  {id:'tactical',name:'Тактические',models:['gign','p_anb_pm_skin6','p_arctic','p_arctic1','p_fg_premium_woman','p_gign4','p_kaze','p_leet2','p_model_ct','p_model_t','p_player_123','p_silent_darryl','p_simen_arcticct3','p_simen_arctict3','p_urban5','p_vector','p_vip_lb1','p_x','p_zara']},
  {id:'anime',name:'Аниме',models:['p_barbara','p_coko_female','p_female','p_gaara_suit_v2','p_gaarashippudden','p_gign2','p_gojo','p_goku','p_haru_female','p_hatake','p_itachi','p_itachi1','p_jbmmgirlnew_s','p_kakashi','p_kirara','p_kisame','p_kittyy','p_kizuna_cs','p_madara','p_makima','p_mejiro_bright','p_model_30_te','p_naruto','p_obito_juubi','p_paimon','p_pain','p_purple_hy','p_rime_female','p_rimurus','p_roronoa_zoro','p_ruoyin','p_sara14','p_sas1','p_sasuke','p_simen_checkins','p_skirk','p_terror','p_tg_cutes','p_tg_sara','p_uk_djinni','p_venti','p_xiannv','p_yanfei','p_yoimiya','p_zhongli','p_itsuki']},
  {id:'games',name:'Игры',models:['p_anubis','p_chick','p_combinepolice_v2','p_death_blade','p_leet1','p_mikenoble','p_sas3','p_tiger_ct','p_vip_d3e77d67','p_vip1','p_waluigi','p_chaos','p_espio','p_knucles','p_mephiles_shadow_form','p_mephiles','p_shadow','p_silver','p_sonic','p_super_shadow','p_small_shadow','p_small_silver','p_small_sonic']},
  {id:'screen',name:'Кино и мультфильмы',models:['dobby','p_14_kopishon','p_bombardier_batman','p_clown','p_deadpool_malysh_blue','p_donald','p_enot_blue','p_frank','p_gsg9','p_guerilla','p_jack_sparrow','p_joker','p_leet','p_mcduck','p_minihalk','p_ousii1','p_pila','p_rick','p_spongebob','p_terror1','p_uk_shrek','p_urban','p_urban1','p_urban3','p_vip','p_ze_summowner']},
  {id:'other',name:'Другое',models:['p_cs_dream_id5_1','p_moonman','p_sas','p_speedball','p_tg_dittzy','p_werewolf','p_wolfie_angel']},
 ];
-export const modelGroupById=new Map(modelGroups.flatMap(group=>group.models.map(id=>[id,group])));
+export const modelGroupById=new Map(modelGroups.filter(group=>!group.collection).flatMap(group=>group.models.map(id=>[id,group])));
 const updatedPreviews=new Set(['gign','dobby','p_hatake']);
 export const modelPreview=id=>'assets/player-previews-'+(updatedPreviews.has(id)?'v2/':'v1/')+id+'.webp';

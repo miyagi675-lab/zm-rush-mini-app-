@@ -1,4 +1,4 @@
-import {modelGroups,modelGroupById,modelPreview} from './model-groups.js?v=1';
+import {modelGroups,modelGroupById,modelPreview} from './model-groups.js?v=2';
 
 export function setupModelBrowser({models,selectedId,onChoose,english}){
  const $=id=>document.getElementById(id),byId=new Map(models.map(m=>[m.id,m]));
@@ -50,7 +50,7 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
  function render(keepScroll=false){
   const scrollTop=keepScroll===true?list.scrollTop:0;
   rendered=true;const term=search.value.trim().toLocaleLowerCase('ru');
-  let visible=models.filter(m=>{const group=modelGroupById.get(m.id);return (category==='all'||category==='favorites'&&favorites.has(m.id)||category==='recent'&&recent.includes(m.id)||group?.id===category)&&(!term||(m.name+' '+(m.nameEn||english(m.name))).toLocaleLowerCase('ru').includes(term));});
+  let visible=models.filter(m=>{const group=modelGroups.find(g=>g.id===category);return (category==='all'||category==='favorites'&&favorites.has(m.id)||category==='recent'&&recent.includes(m.id)||group?.models.includes(m.id))&&(!term||(m.name+' '+(m.nameEn||english(m.name))).toLocaleLowerCase('ru').includes(term));});
   if(category==='recent')visible.sort((a,b)=>recent.indexOf(a.id)-recent.indexOf(b.id));
   else if($('model-sort').value==='name')visible.sort((a,b)=>displayName(a).localeCompare(displayName(b),document.documentElement.lang));
   $('model-count').textContent=visible.length+' / '+models.length;

@@ -1,5 +1,6 @@
 import {playerNamePairs} from './player-catalog.js?v=7';
-const pairs=`мес.|mo.
+const pairs=`Маленькие скины|Small skins
+мес.|mo.
 Вернуться наверх|Back to top
 Наверх|Top
 Каталог моделей|Model catalog
