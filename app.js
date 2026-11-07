@@ -1,4 +1,4 @@
-import {setupPurchase} from './purchase.js?v=3';
+import {setupPurchase} from './purchase.js?v=4';
 import {english} from './language.js?v=12';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
@@ -27,7 +27,7 @@ const telegram=window.Telegram?.WebApp;
 try{telegram?.ready();telegram?.expand();if(telegram?.isVersionAtLeast?.('6.1')){telegram.setHeaderColor('#101513');telegram.setBackgroundColor('#101513');}}catch{}
 
 const toast=text=>{$('toast').textContent=text;};
-setupPurchase(()=>current,()=>!ready||!$('loading').hidden);
+setupPurchase(()=>current||{...player,purchaseType:'model'},()=>!ready||!$('loading').hidden);
 function syncSelection(){for(const card of $('items').children){const selected=card.dataset.id===current?.id;card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
 function renderCatalog(){
  const term=$('search').value.trim().toLocaleLowerCase('ru');
@@ -65,7 +65,7 @@ async function selectLook(entry,nextBody={},writeSlot=true){
  try{
   let next=null,key;if(entry){const lookup=fittedHat(entry,nextBody);key=lookup.key;next=lookup.cached;if(!next){const buffer=await load('hats/'+entry.id+'.mdl',{onProgress:p=>{if(token===ticket)progressFor('Примеряем '+entry.name+'…')(p);}});if(token!==ticket)return;next=parseMDL(buffer,ct.userData.bones,0,nextBody,hatScaleFor(player,entry));fittedHats.set(key,next);}}
   if(token!==ticket)return;if(hat)rig.remove(hat);hat=next;if(hat)rig.add(hat);trimHats();current=entry;body=nextBody;
-  $('selected-name').textContent=entry?.name||'Без шапки';$('detail-name').textContent=entry?.name||'Классическая модель';$('detail-file').textContent=entry?entry.id+'.mdl · '+player.name:'Модель '+player.name;$('variants').replaceChildren();
+  $('selected-name').textContent=entry?.name||'Без шапки';$('detail-name').textContent=entry?.name||player.name;$('detail-file').textContent=entry?entry.id+'.mdl · '+player.name:'Модель '+player.name;$('variants').replaceChildren();
   for(const variant of hat?.userData.variants||[]){const label=document.createElement('label');label.textContent='Вариант';const select=document.createElement('select');variant.names.forEach((name,index)=>{const option=document.createElement('option');option.value=index;option.textContent=name;select.append(option);});select.value=body[variant.part]||0;select.onchange=()=>selectLook(current,{...body,[variant.part]:Number(select.value)},true);label.append(select);$('variants').append(label);}
   if(writeSlot){slots[activeSlot]=entry?{id:entry.id,name:entry.name,body:{...nextBody}}:null;localStorage.setItem('zm-rush-slots',JSON.stringify(slots));}
   refreshSlots();syncSelection();toast('');performance.measure('zm-rush:accessory-ready',{start:started});try{telegram?.HapticFeedback?.selectionChanged();}catch{}
@@ -93,7 +93,7 @@ async function choosePlayer(id,initial=false){
   bounds.setFromObject(ct);modelHeight=bounds.max.y;const head=ct.userData.bones.get('Bip01 Head');if(head)modelHead.setFromMatrixPosition(head).applyMatrix4(rig.matrixWorld);else bounds.getCenter(modelHead).setY(modelHeight*.85);
   animationTime=0;ready=true;frame(isClose());$('player-model').value=player.id;$('model-label').textContent=player.name;
   const price=modelPriceLabel(player.id);$('model-price').textContent=price;$('model-price').hidden=!price;
-  $('detail-name').textContent=current?.name||'Классическая модель';$('detail-file').textContent=current?current.id+'.mdl · '+player.name:'Модель '+player.name;
+  $('detail-name').textContent=current?.name||player.name;$('detail-file').textContent=current?current.id+'.mdl · '+player.name:'Модель '+player.name;
   localStorage.setItem('zm-rush-player',JSON.stringify(player.id));performance.measure('zm-rush:model-ready',{start:started});
   modelBrowser?.setSelected(player.id,!initial);
  }catch(e){ready=!!ct;$('player-model').value=player.id;toast('Не удалось загрузить модель. Попробуйте ещё раз.');console.error(e);}
