@@ -50,7 +50,8 @@ function syncFilters(){document.querySelectorAll('[data-filter]').forEach(b=>{co
 function lighting(target){target.add(new T.HemisphereLight(0xe6f5d8,0x6b7866,2));const key=new T.DirectionalLight(0xfff1db,1.4);key.position.set(60,100,90);target.add(key);const fill=new T.DirectionalLight(0xa7d1ef,.7);fill.position.set(-65,30,-40);target.add(fill);}
 function isClose(){return $('head').classList.contains('active');}
 function frame(close=false){
- if(!ready)return;const ratio=modelHeight/62,target=close?modelHead.clone():new T.Vector3(0,modelHeight*.56,0);controls.target.copy(target);const far=(close?62:112)*ratio,high=(close?8:29)*ratio;
+ // Rat is naturally only 8 units tall: keep a wider full-body view instead of enlarging it to human size.
+ if(!ready)return;const framingHeight=player.id==='p_chick'&&!close?Math.max(modelHeight,32):modelHeight;const ratio=framingHeight/62,target=close?modelHead.clone():new T.Vector3(0,modelHeight*.56,0);controls.target.copy(target);const far=(close?62:112)*ratio,high=(close?8:29)*ratio;
  const offsets={front:new T.Vector3(far,high,0),side:new T.Vector3(0,high,far),back:new T.Vector3(-far,high,0),angle:new T.Vector3(far,high,(close?34:65)*ratio)};
  camera.position.copy(target).add(offsets[cameraView]);controls.minDistance=12*ratio;controls.maxDistance=230*ratio;controls.update();
  $('full').classList.toggle('active',!close);$('full').setAttribute('aria-pressed',String(!close));$('head').classList.toggle('active',close);$('head').setAttribute('aria-pressed',String(close));
