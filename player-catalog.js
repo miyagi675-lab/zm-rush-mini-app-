@@ -774,10 +774,13 @@ export const extraPlayerModels=[
   "name": "Троллфейс",
   "file": "players-v1/p_sas.mdl",
   "hatScale": {
-   "head": 0.2,
+   "head": 1.8,
    "body": 0.9637494856311429
   },
-  "nameEn": "Trollface"
+  "nameEn": "Trollface",
+  "hatScaleOverrides": {
+   "cheburashka": 1
+  }
  },
  {
   "id": "p_sas1",
@@ -1332,10 +1335,13 @@ export const extraPlayerModels=[
   "name": "Соник · маленький",
   "file": "players-v1/p_small_sonic.mdl",
   "hatScale": {
-   "head": 2.548071996717582,
+   "head": 1.6,
    "body": 0.9030607746493432
   },
-  "nameEn": "Sonic · small"
+  "nameEn": "Sonic · small",
+  "hatScaleOverrides": {
+   "cheburashka": 1.05
+  }
  },
  {
   "id": "p_itsuki",

@@ -3,7 +3,7 @@ import {english} from './language.js?v=12';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=6';
-import {entries,playerModels} from './catalog.js?v=10';
+import {entries,playerModels} from './catalog.js?v=11';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=3';
 import {setupModelBrowser} from './model-browser.js?v=5';
 import {modelPriceLabel} from './model-prices.js?v=1';
