@@ -1,5 +1,6 @@
 import {playerNamePairs} from './player-catalog.js?v=7';
 const pairs=`Маленькие скины|Small skins
+месяц|month
 мес.|mo.
 Вернуться наверх|Back to top
 Наверх|Top

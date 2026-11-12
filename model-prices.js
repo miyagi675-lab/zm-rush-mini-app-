@@ -86,4 +86,4 @@ export const modelPrices=Object.freeze({
  "p_zhongli": 1500
 });
 const rubles=new Intl.NumberFormat('ru-RU');
-export function modelPriceLabel(id){const amount=modelPrices[id];return Number.isInteger(amount)?rubles.format(amount)+' ₽ / мес.':'';}
+export function modelPriceLabel(id){const amount=modelPrices[id];return Number.isInteger(amount)?rubles.format(amount)+' ₽ / месяц':'';}
