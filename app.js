@@ -5,7 +5,8 @@ import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=6';
 import {entries,playerModels} from './catalog.js?v=11';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=3';
-import {setupModelBrowser} from './model-browser.js?v=5';
+import {setupModelBrowser} from './model-browser.js?v=6';
+import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPriceLabel} from './model-prices.js?v=2';
 
 const $=id=>document.getElementById(id);
@@ -24,11 +25,22 @@ let ct,hat,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filt
 let player=playerModels.find(m=>m.id===readJSON('zm-rush-player','gign'))||playerModels[0],modelHeight=62,modelHead=new T.Vector3(0,56,0),playerTicket=0;
 let activeSlot='a',animationTime=0,animationSpeed=1,animationPlaying=true,motion='walk',cameraView='angle';
 const telegram=window.Telegram?.WebApp;
-try{telegram?.ready();telegram?.expand();if(telegram?.isVersionAtLeast?.('6.1')){telegram.setHeaderColor('#101513');telegram.setBackgroundColor('#101513');}}catch{}
+try {
+  telegram?.ready();
+  telegram?.expand();
+  if (telegram?.isVersionAtLeast?.('7.7')) {
+    telegram.disableVerticalSwipes?.();
+  }
+  if (telegram?.isVersionAtLeast?.('6.1')) {
+    telegram.setHeaderColor('#101513');
+    telegram.setBackgroundColor('#101513');
+  }
+} catch {}
 
 const toast=text=>{$('toast').textContent=text;};
 setupPurchase(()=>current||{...player,purchaseType:'model'},()=>!ready||!$('loading').hidden);
 function syncSelection(){for(const card of $('items').children){const selected=card.dataset.id===current?.id;card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
+const loadHatPreviews = createPreviewLoader();
 function renderCatalog(){
  const term=$('search').value.trim().toLocaleLowerCase('ru');
  const visible=entries.filter(e=>(filter==='all'||filter==='favorites'||e.category===filter)&&(!term||(e.name+' '+english(e.name)+' '+e.id).toLocaleLowerCase('ru').includes(term))&&(filter!=='favorites'||favorites.has(e.id)));
@@ -37,7 +49,7 @@ function renderCatalog(){
  for(const e of visible){
   const card=document.createElement('article');card.className='item'+(current?.id===e.id?' selected':'');card.dataset.id=e.id;
   const pick=document.createElement('button');pick.className='item-pick';pick.setAttribute('aria-label','Примерить: '+e.name);pick.setAttribute('aria-pressed',String(current?.id===e.id));
-  const img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';img.width=256;img.height=256;img.src='assets/previews-v2/'+e.id+'.webp';
+  const img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';img.width=256;img.height=256;img.dataset.preview='assets/previews-v2/'+e.id+'.webp';
   const name=document.createElement('span');name.className='item-name';name.textContent=e.name;
   const category=document.createElement('span');category.className='item-type';category.textContent=categories[e.category];
   pick.append(img,name,category);pick.onclick=()=>selectLook(e,{},true);pick.onpointerenter=pick.onfocus=()=>{if(ready)prefetchModel('hats/'+e.id+'.mdl');};
@@ -45,6 +57,7 @@ function renderCatalog(){
   fav.onclick=ev=>{ev.stopPropagation();favorites.has(e.id)?favorites.delete(e.id):favorites.add(e.id);localStorage.setItem('zm-rush-favorites',JSON.stringify([...favorites]));renderCatalog();};
   card.append(pick,fav);if(current?.id===e.id){const check=document.createElement('span');check.className='check';check.textContent='✓';card.append(check);}$('items').append(card);
  }
+ loadHatPreviews($('items'));
 }
 function syncFilters(){document.querySelectorAll('[data-filter]').forEach(b=>{const on=b.dataset.filter===filter;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});}
 function lighting(target){target.add(new T.HemisphereLight(0xe6f5d8,0x6b7866,2));const key=new T.DirectionalLight(0xfff1db,1.4);key.position.set(60,100,90);target.add(key);const fill=new T.DirectionalLight(0xa7d1ef,.7);fill.position.set(-65,30,-40);target.add(fill);}

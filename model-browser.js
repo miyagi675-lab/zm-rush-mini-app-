@@ -1,4 +1,5 @@
 import {modelGroups,modelGroupById,modelPreview} from './model-groups.js?v=2';
+import {createPreviewLoader} from './preview-loader.js?v=1';
 
 export function setupModelBrowser({models,selectedId,onChoose,english}){
  const $=id=>document.getElementById(id),byId=new Map(models.map(m=>[m.id,m]));
@@ -8,6 +9,7 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
  const favorites=new Set((Array.isArray(savedFavorites)?savedFavorites:[]).filter(id=>byId.has(id)));
  let recent=(Array.isArray(savedRecent)?savedRecent:[]).filter(id=>byId.has(id)),category='all',busy=false,pending=null,rendered=false;
  const list=$('model-items'),search=$('model-search'),filters=$('model-filters'),opener=$('open-models');
+ const loadModelPreviews = createPreviewLoader();
  const displayName=model=>document.documentElement.lang==='en'?(model.nameEn||english(model.name)):model.name;
  function button(text,fn){const el=document.createElement('button');el.type='button';el.textContent=text;el.onclick=fn;return el;}
  function showTab(tab,focus=false,resetScroll=true){
@@ -62,7 +64,7 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
     pending=model.id;setBusy(true);try{await onChoose(model.id);}finally{pending=null;setBusy(false);}
    });pick.className='model-pick';pick.setAttribute('aria-label','Выбрать модель: '+model.name);
    const picture=document.createElement('div');picture.className='model-picture';
-   const img=document.createElement('img');img.src=modelPreview(model.id);img.alt='';img.loading='lazy';img.decoding='async';img.width=320;img.height=280;
+   const img=document.createElement('img');img.dataset.preview=modelPreview(model.id);img.alt='';img.loading='lazy';img.decoding='async';img.width=320;img.height=280;
    img.onerror=()=>{img.hidden=true;const fallback=document.createElement('span');fallback.className='model-image-fallback';fallback.textContent=model.name.slice(0,2).toUpperCase();picture.append(fallback);};picture.append(img);
    const name=document.createElement('span');name.className='model-name';name.textContent=model.name;
    const genre=document.createElement('span');genre.className='model-genre';genre.textContent=group?.name||'Другое';
@@ -72,6 +74,7 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
    const check=document.createElement('span');check.className='model-check';check.textContent='✓';check.setAttribute('aria-hidden','true');card.append(pick,fav,check);fragment.append(card);
   }
   list.replaceChildren(fragment);list.scrollTop=scrollTop;
+  loadModelPreviews(list);
   const empty=!visible.length;$('model-empty').hidden=!empty;
   $('model-empty-title').textContent=category==='favorites'&&!term?'В избранном пока пусто':category==='recent'&&!term?'Здесь появятся выбранные модели':'Модель не найдена';
   $('model-empty-copy').textContent=category==='favorites'?'Нажми на звёздочку у понравившегося персонажа.':category==='recent'?'Выбери персонажа — он сохранится в этом списке.':'Попробуй другое имя или сбрось фильтры.';
