@@ -123,7 +123,43 @@ async function selectLook(entry,nextBody={},writeSlot=true){
 function chooseSlot(key){if(!ready)return;activeSlot=key;refreshSlots();const look=slots[key],entry=look?entries.find(e=>e.id===look.id):null;selectLook(entry,look?.body||{},false);}
 function setMotion(value){motion=value;animationTime=0;animationPlaying=value!=='static';$('pause').disabled=!ready||selectionBusy||value==='static';$('pause').setAttribute('aria-pressed',String(!animationPlaying));$('pause').textContent=animationPlaying?'Пауза':'Продолжить';}
 function updateAnimation(delta){if(!ready||!ct?.userData.updatePose)return;if(animationPlaying)animationTime+=delta*animationSpeed;const wanted=motion==='idle1'?'idle1':motion;const sequence=motion==='static'?0:(ct.userData.sequences.find(s=>s.name.trim().toLowerCase()===wanted)?.index||1);ct.userData.updatePose(sequence,animationTime);hat?.userData.updatePose?.(sequence,animationTime,ct.userData.bones);}
-function snapshot(){renderer.render(scene,camera);const url=renderer.domElement.toDataURL('image/png');$('photo').src=url;$('download-photo').href=url;$('photo-dialog').showModal();const share=$('share-photo');share.hidden=!navigator.share;share.onclick=async()=>{try{const blob=await (await fetch(url)).blob(),file=new File([blob],'zm-rush.png',{type:'image/png'});if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Мой образ ZM RUSH'});else await navigator.share({title:'Мой образ ZM RUSH',text:current?.name||player.name});}catch(e){if(e.name!=='AbortError')toast('Не удалось поделиться снимком.');}};}
+function startPreviewLoop(viewport) {
+  const canObserve = typeof IntersectionObserver === 'function';
+  let inView = !canObserve;
+  let running = false;
+  let previous = null;
+
+  function draw(now) {
+    const delta = previous === null ? 0 : Math.min((now - previous) / 1000, .1);
+    previous = now;
+    updateAnimation(delta);
+    controls.update(delta);
+    renderer.render(scene, camera);
+  }
+
+  function sync() {
+    const shouldRun = sceneAvailable && inView && !document.hidden;
+    if (running === shouldRun) return;
+    running = shouldRun;
+    previous = null;
+    renderer.setAnimationLoop(running ? draw : null);
+  }
+
+  const observer = canObserve ? new IntersectionObserver(records => {
+    inView = records[records.length - 1].isIntersecting;
+    sync();
+  }) : null;
+  observer?.observe(viewport);
+  document.addEventListener('visibilitychange', sync);
+  sync();
+
+  return () => {
+    observer?.disconnect();
+    document.removeEventListener('visibilitychange', sync);
+    sync();
+  };
+}
+function snapshot(){updateAnimation(0);renderer.render(scene,camera);const url=renderer.domElement.toDataURL('image/png');$('photo').src=url;$('download-photo').href=url;$('photo-dialog').showModal();const share=$('share-photo');share.hidden=!navigator.share;share.onclick=async()=>{try{const blob=await (await fetch(url)).blob(),file=new File([blob],'zm-rush.png',{type:'image/png'});if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Мой образ ZM RUSH'});else await navigator.share({title:'Мой образ ZM RUSH',text:current?.name||player.name});}catch(e){if(e.name!=='AbortError')toast('Не удалось поделиться снимком.');}};}
 
 async function choosePlayer(id,initial=false){
  if (!sceneAvailable || selectionBusy) return false;
@@ -198,18 +234,20 @@ document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.len
 refreshSlots();syncFilters();renderCatalog();
 modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,isReady:()=>sceneAvailable&&Boolean(ct),onChoose:choosePlayer});
 setBusy(false);
+let stopPreviewLoop;
 try{
  renderer=new T.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;$('viewport').append(renderer.domElement);
  scene=new T.Scene();lighting(scene);camera=new T.PerspectiveCamera(40,1,.1,500);controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.enablePan=false;controls.maxPolarAngle=Math.PI*.49;controls.autoRotateSpeed=2.1;
  rig=new T.Group();rig.rotation.x=-Math.PI/2;rig.position.y=37;scene.add(rig);const floor=new T.Mesh(new T.CylinderGeometry(27,29,1,64),new T.MeshLambertMaterial({color:0x34432e}));floor.position.y=-.2;scene.add(floor);const ring=new T.Mesh(new T.TorusGeometry(28,.12,8,96),new T.MeshBasicMaterial({color:0x88a65a}));ring.rotation.x=-Math.PI/2;ring.position.y=.35;scene.add(ring);const grid=new T.GridHelper(280,28,0x40503a,0x2a3829);grid.position.y=-.8;scene.add(grid);
  const resize=()=>{const {width,height}=$('viewport').getBoundingClientRect();renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe($('viewport'));resize();
  sceneAvailable = true;
- let previous=performance.now();renderer.setAnimationLoop(now=>{const delta=Math.min((now-previous)/1000,.1);previous=now;if(!document.hidden){updateAnimation(delta);controls.update(delta);renderer.render(scene,camera);}});
+ stopPreviewLoop = startPreviewLoop($('viewport'));
  renderer.domElement.addEventListener('webglcontextlost',e=>{
   e.preventDefault();
   ++ticket;
   ++playerTicket;
   sceneAvailable = false;
+  stopPreviewLoop();
   ready = false;
   retryPlayerId = null;
   $('retry-model').hidden = true;
@@ -220,6 +258,7 @@ try{
  await choosePlayer(player.id,true);
 }catch(e){
  sceneAvailable = false;
+ stopPreviewLoop?.();
  ready = false;
  $('loading').hidden = false;
  $('loading-message').textContent = 'Не удалось запустить 3D. Откройте приложение в другом браузере.';

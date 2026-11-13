@@ -67,6 +67,16 @@ async function newPage(width, height) {
     return route.abort();
   });
   const page = await context.newPage();
+  await page.addInitScript(() => {
+    window.studioDraws = 0;
+    for (const method of ['drawArrays', 'drawElements']) {
+      const draw = WebGL2RenderingContext.prototype[method];
+      WebGL2RenderingContext.prototype[method] = function (...args) {
+        if (this.canvas.parentElement?.id === 'viewport') window.studioDraws++;
+        return draw.apply(this, args);
+      };
+    }
+  });
   const errors = [];
   const requestFailures = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -94,6 +104,39 @@ async function loadOk(page) {
   await page.locator('#loading').waitFor({state: 'hidden'});
   await page.waitForFunction(selector => !document.querySelector(selector).disabled, pause);
   assert.equal(await page.locator('#viewport canvas').count(), 1);
+}
+
+async function waitForStudioDraw(page) {
+  const previous = await page.evaluate(() => window.studioDraws);
+  await page.waitForFunction(draws => window.studioDraws > draws, previous);
+}
+
+async function assertOffscreenStudio(page) {
+  await waitForStudioDraw(page);
+  await page.setViewportSize({width: 1280, height: 180});
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForFunction(() => document.getElementById('viewport').getBoundingClientRect().bottom <= 0);
+  const drawsWhileHidden = await page.evaluate(async () => {
+    const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+    // Allow the observer to process the scroll before measuring subsequent frames.
+    await frame();
+    await frame();
+    const before = window.studioDraws;
+    for (let index = 0; index < 8; index++) await frame();
+    return window.studioDraws - before;
+  });
+  assert.equal(drawsWhileHidden, 0, 'An offscreen studio must stop drawing');
+
+  const beforeSnapshot = await page.evaluate(() => window.studioDraws);
+  await page.locator('#snapshot').click();
+  assert(await page.evaluate(() => document.getElementById('viewport').getBoundingClientRect().bottom <= 0));
+  assert.match(await page.locator('#photo').getAttribute('src'), /^data:image\/png;base64,/);
+  assert(await page.evaluate(before => window.studioDraws > before, beforeSnapshot));
+  await page.locator('#close-photo').click();
+
+  await page.setViewportSize({width: 1280, height: 800});
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await waitForStudioDraw(page);
 }
 
 async function assertPurchase(page, expectedName, expectedPrice) {
@@ -142,6 +185,7 @@ try {
       assert.equal((await page.locator('#weapons-panel').textContent()).trim(), 'Soon');
       await page.locator('#tab-weapons').press('Home');
       assert.equal(await page.locator('#tab-hats').getAttribute('aria-selected'), 'true');
+      await assertOffscreenStudio(page);
       assert.deepEqual(errors, []);
     } finally {
       await context.close();
@@ -160,6 +204,12 @@ try {
       await loadOk(page);
       await assertPurchase(page, 'Добби', /^3 000 ₽ \/ месяц$/);
       await page.locator('#tab-hats').click();
+      await page.evaluate(() => window.scrollTo(0, 600));
+      await page.waitForFunction(() => {
+        const {top, bottom} = document.getElementById('viewport').getBoundingClientRect();
+        return window.scrollY >= 600 && bottom > 0 && top < innerHeight;
+      });
+      await waitForStudioDraw(page);
       await page.locator('#items [data-id="bunny"] .item-pick').click();
       await page.locator('#purchase-options').waitFor({state: 'visible'});
       await page.waitForFunction(() => document.querySelector('#buy').getAttribute('aria-disabled') === 'false');
@@ -174,7 +224,7 @@ try {
       await context.close();
     }
   }
-  console.log('Browser smoke passed: loading recovery, alternate model, Weapons tab, and mobile purchase selection.');
+  console.log('Browser smoke passed: loading recovery, Weapons tab, visibility-aware 3D, and mobile purchases.');
 } finally {
   await browser?.close();
   server.closeAllConnections();
