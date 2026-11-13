@@ -1,6 +1,7 @@
 import {modelAssets} from './model-assets.js?v=3';
 // Share downloads, keep successful buffers in memory, and reuse persistent data.
 const pending=new Map(),cacheName='zm-rush-models-v1';
+const maxCachedModels = 60;
 let cachePromise,prefetching=false;
 const queued=new Set();
 function trimBuffers(){let bytes=0,count=0;for(const t of pending.values())if(t.done){bytes+=t.bytes;count++;}for(const [file,t] of pending){if(count<=8&&bytes<=24*1024*1024)break;if(t.done&&count>1){pending.delete(file);bytes-=t.bytes;count--;}}}
@@ -32,7 +33,14 @@ async function read(file,priority,progress){
   if(reader){while(true){const {value,done}=await reader.read();if(done)break;chunks.push(value);received+=value.length;const percent=total?Math.min(100,Math.floor(received/total*10)*10):0;if(percent!==last){last=percent;progress({received,total,percent});}}}
   else chunks.push(new Uint8Array(await response.arrayBuffer()));
   const body=new Blob(chunks),buffer=await decode(new Response(body));
-  if(cache)cache.put(url,new Response(body)).catch(()=>{});
+  if (cache) {
+    cache.put(url, new Response(body))
+      .then(() => cache.keys())
+      .then(keys => Promise.all(
+        keys.slice(0, -maxCachedModels).map(request => cache.delete(request))
+      ))
+      .catch(() => {});
+  }
   return buffer;
  }finally{clearTimeout(timeout);}
 }
