@@ -1,0 +1,160 @@
+import assert from 'node:assert/strict';
+import {createReadStream} from 'node:fs';
+import {stat} from 'node:fs/promises';
+import {createServer} from 'node:http';
+import {extname, resolve, relative, isAbsolute} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
+
+const require = createRequire(import.meta.url);
+const {chromium} = process.env.MINI_APP_PLAYWRIGHT_PATH
+  ? require(process.env.MINI_APP_PLAYWRIGHT_PATH)
+  : require('playwright-core');
+const site = fileURLToPath(new URL('../', import.meta.url));
+const mount = '/zm-rush-mini-app-/';
+const contentTypes = new Map([
+  ['.html', 'text/html; charset=utf-8'],
+  ['.js', 'text/javascript; charset=utf-8'],
+  ['.css', 'text/css; charset=utf-8'],
+  ['.svg', 'image/svg+xml'],
+  ['.webp', 'image/webp'],
+]);
+
+const server = createServer(async (request, response) => {
+  try {
+    const url = new URL(request.url, 'http://127.0.0.1');
+    if (!url.pathname.startsWith(mount)) throw Error('Outside mount');
+    const path = resolve(site, decodeURIComponent(url.pathname.slice(mount.length)) || 'index.html');
+    const localPath = relative(site, path);
+    if (localPath.startsWith('..') || isAbsolute(localPath)) throw Error('Outside site');
+    const file = await stat(path);
+    if (!file.isFile()) throw Error('Not a file');
+    response.writeHead(200, {
+      'Content-Type': contentTypes.get(extname(path)) || 'application/octet-stream',
+      'Content-Length': file.size,
+    });
+    createReadStream(path).pipe(response);
+  } catch {
+    response.writeHead(404).end();
+  }
+});
+
+await new Promise((done, reject) => {
+  server.once('error', reject);
+  server.listen(0, '127.0.0.1', done);
+});
+const origin = 'http://127.0.0.1:' + server.address().port;
+const models = '#model-items .model-pick';
+const pause = '#snapshot';
+let browser;
+
+async function newPage(width, height) {
+  const context = await browser.newContext({viewport: {width, height}});
+  // Keep the test offline apart from the local site. Receipt of a Telegram URL
+  // is sufficient, so the test never contacts the seller or opens an app.
+  await context.route('**/*', route => {
+    const url = new URL(route.request().url());
+    if (url.origin === origin) return route.continue();
+    if (url.href === 'https://telegram.org/js/telegram-web-app.js') {
+      return route.fulfill({
+        contentType: 'text/javascript',
+        body: 'window.Telegram={WebApp:{ready(){},expand(){},isVersionAtLeast(){return true},'
+          + 'disableVerticalSwipes(){window.swipesDisabled=true},setHeaderColor(){},'
+          + 'setBackgroundColor(){},openTelegramLink(url){window.purchaseUrl=url}}};',
+      });
+    }
+    return route.abort();
+  });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  return {page, errors, context};
+}
+
+async function loadOk(page) {
+  await page.locator('#loading').waitFor({state: 'hidden'});
+  await page.waitForFunction(selector => !document.querySelector(selector).disabled, pause);
+  assert.equal(await page.locator('#viewport canvas').count(), 1);
+}
+
+async function assertPurchase(page, expectedName, expectedPrice) {
+  const link = page.locator('#buy');
+  await page.waitForFunction(name => document.querySelector('#purchase-name').textContent === name, expectedName);
+  const price = (await page.locator('#purchase-price').textContent()).replace(/\s+/g, ' ').trim();
+  assert.match(price, expectedPrice);
+  const href = new URL(await link.getAttribute('href'));
+  assert.equal(href.origin, 'https://t.me');
+  assert(href.searchParams.get('text')?.includes(expectedName), 'Purchase draft has wrong product');
+  await link.click();
+  assert.equal(await page.evaluate(() => window.purchaseUrl), href.href);
+}
+
+try {
+  browser = await chromium.launch({
+    executablePath: process.env.MINI_APP_CHROMIUM || undefined,
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader'],
+  });
+  {
+    const {page, errors, context} = await newPage(1280, 800);
+    try {
+      let failed = false;
+      await page.route('**/assets/web-v2/gign.mdl.gz', async route => {
+        if (failed) return route.continue();
+        failed = true;
+        await route.fulfill({status: 503, body: 'Simulated temporary outage'});
+      });
+      await page.goto(origin + mount);
+      const retry = page.locator('#retry-model');
+      await retry.waitFor({state: 'visible'});
+      assert(failed);
+      await page.locator('#open-models').click();
+      await page.locator(models).first().waitFor({state: 'visible'});
+      assert(await page.locator(models).first().isEnabled(), 'Model picker must remain available after an error');
+      await retry.click();
+      await loadOk(page);
+      assert.equal(await retry.isVisible(), false);
+      assert(await page.evaluate(() => window.swipesDisabled));
+      await page.locator('#tab-weapons').click();
+      await page.locator('#weapons-panel').waitFor({state: 'visible'});
+      assert.equal((await page.locator('#weapons-panel').textContent()).trim(), 'Soon');
+      await page.locator('#tab-weapons').press('Home');
+      assert.equal(await page.locator('#tab-hats').getAttribute('aria-selected'), 'true');
+      assert.deepEqual(errors, []);
+    } finally {
+      await context.close();
+    }
+  }
+  {
+    const {page, errors, context} = await newPage(390, 844);
+    try {
+      await page.route('**/assets/web-v2/gign.mdl.gz', route => route.fulfill({
+        status: 503, body: 'Simulated unavailable model',
+      }));
+      await page.goto(origin + mount);
+      await page.locator('#retry-model').waitFor({state: 'visible'});
+      await page.locator('#open-models').click();
+      await page.locator('#model-items [data-model-id="dobby"] .model-pick').click();
+      await loadOk(page);
+      await assertPurchase(page, 'Добби', /^3 000 ₽ \/ месяц$/);
+      await page.locator('#tab-hats').click();
+      await page.locator('#items [data-id="bunny"] .item-pick').click();
+      await page.locator('#purchase-options').waitFor({state: 'visible'});
+      await page.waitForFunction(() => document.querySelector('#buy').getAttribute('aria-disabled') === 'false');
+      const hat = await page.locator('#items [data-id="bunny"] .item-name').textContent();
+      await assertPurchase(page, hat, /^Цена по запросу$/);
+      await page.locator('[data-product-type="model"]').click();
+      await assertPurchase(page, 'Добби', /^3 000 ₽ \/ месяц$/);
+      await page.locator('[data-product-type="hat"]').click();
+      await assertPurchase(page, hat, /^Цена по запросу$/);
+      assert.deepEqual(errors, []);
+    } finally {
+      await context.close();
+    }
+  }
+  console.log('Browser smoke passed: loading recovery, alternate model, Weapons tab, and mobile purchase selection.');
+} finally {
+  await browser?.close();
+  server.closeAllConnections();
+  await new Promise(done => server.close(done));
+}

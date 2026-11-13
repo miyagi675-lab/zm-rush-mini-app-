@@ -97,3 +97,122 @@
     animation: none;
   }
 }
+
+.catalog-tabs > button {
+  min-width: 0;
+}
+
+.weapons-panel {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+}
+
+.weapons-soon {
+  margin: 0;
+  color: rgb(194 198 194 / 55%);
+  font-size: clamp(28px, 5vw, 52px);
+  font-weight: 650;
+}
+
+.details {
+  flex-wrap: wrap;
+}
+
+.details > div:first-child {
+  flex: 1 1 150px;
+  overflow-wrap: anywhere;
+}
+
+#variants:empty {
+  display: none;
+}
+
+.purchase-selection {
+  display: grid;
+  gap: 10px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+#purchase-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#purchase-options[hidden],
+#purchase-options > button[hidden] {
+  display: none;
+}
+
+#purchase-options > button {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid #526643;
+  border-radius: 7px;
+  background: #202c1b;
+  color: #d9e8cd;
+  font-size: 12px;
+}
+
+#purchase-options > button[aria-pressed="true"] {
+  border-color: var(--lime);
+  background: #2d3c20;
+  color: var(--lime);
+}
+
+.purchase-summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.purchase-summary #purchase-name {
+  display: block;
+}
+
+#purchase-price:not([hidden]) {
+  display: block;
+  margin-top: 4px;
+  color: #d6ebbb;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.purchase-selection #buy {
+  min-width: 0;
+  min-height: 44px;
+}
+
+#buy[aria-disabled="true"] {
+  opacity: .45;
+  cursor: default;
+}
+
+#loading {
+  inset-inline: 12px;
+  max-width: 320px;
+  margin-inline: auto;
+}
+
+#loading-message {
+  display: block;
+  line-height: 1.45;
+}
+
+#retry-model:not([hidden]) {
+  display: inline-block;
+  max-width: 100%;
+  margin-top: 12px;
+  pointer-events: auto;
+}
+
+@media (max-width: 800px) {
+  .catalog-tabs > button {
+    gap: 4px;
+  }
+
+  .catalog-tabs > button span {
+    padding-inline: 3px;
+  }
+}

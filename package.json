@@ -1,0 +1,12 @@
+{
+  "name": "zm-rush-mini-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/validate-catalog.mjs",
+    "test:browser": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.62.1"
+  }
+}

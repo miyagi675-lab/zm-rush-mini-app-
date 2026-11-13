@@ -1,7 +1,7 @@
 import {modelGroups,modelGroupById,modelPreview} from './model-groups.js?v=2';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 
-export function setupModelBrowser({models,selectedId,onChoose,english}){
+export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()=>true}){
  const $=id=>document.getElementById(id),byId=new Map(models.map(m=>[m.id,m]));
  const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))||fallback;}catch{return fallback;}};
  const store=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
@@ -10,16 +10,21 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
  let recent=(Array.isArray(savedRecent)?savedRecent:[]).filter(id=>byId.has(id)),category='all',busy=false,pending=null,rendered=false;
  const list=$('model-items'),search=$('model-search'),filters=$('model-filters'),opener=$('open-models');
  const loadModelPreviews = createPreviewLoader();
+ const tabs = ['hats','models','weapons'];
+ let activeTab = 'hats';
  const displayName=model=>document.documentElement.lang==='en'?(model.nameEn||english(model.name)):model.name;
  function button(text,fn){const el=document.createElement('button');el.type='button';el.textContent=text;el.onclick=fn;return el;}
  function showTab(tab,focus=false,resetScroll=true){
-  for(const name of ['hats','models']){const active=name===tab;$('tab-'+name).setAttribute('aria-selected',String(active));$('tab-'+name).tabIndex=active?0:-1;$(name+'-panel').hidden=!active;}
+  if (!tabs.includes(tab)) return;
+  activeTab=tab;
+  for(const name of tabs){const active=name===tab;$('tab-'+name).setAttribute('aria-selected',String(active));$('tab-'+name).tabIndex=active?0:-1;$(name+'-panel').hidden=!active;}
   opener.setAttribute('aria-expanded',String(tab==='models'));
   document.body.classList.toggle('model-catalog-open',tab==='models');
   if(tab==='models'&&!rendered)render();
   if(focus)$('tab-'+tab).focus({preventScroll:true});
   if(resetScroll){
-   $(tab==='models'?'model-items':'items').scrollTop=0;
+   if (tab==='models') list.scrollTop=0;
+   if (tab==='hats') $('items').scrollTop=0;
    if(matchMedia('(max-width:800px)').matches){
     const catalogTop=document.querySelector('.catalog').getBoundingClientRect().top+window.scrollY;
     const previewHeight=document.querySelector('.studio').getBoundingClientRect().height;
@@ -34,14 +39,26 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
  $('model-total').textContent=models.length;
  $('tab-model-count').textContent=models.length;
  $('tab-hat-count').textContent=$('count').textContent.split('/').pop()?.trim()||'86';
- $('tab-hats').onclick=()=>showTab('hats');$('tab-models').onclick=()=>showTab('models');
- $('catalog-tabs').onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tab=e.key==='Home'?'hats':e.key==='End'?'models':$('tab-models').getAttribute('aria-selected')==='true'?'hats':'models';showTab(tab,true);};
+ for (const tab of tabs) $('tab-'+tab).onclick=()=>showTab(tab);
+ $('catalog-tabs').onkeydown=event=>{
+  const index=tabs.indexOf(activeTab);
+  let target;
+  switch (event.key) {
+   case 'ArrowLeft': target=(index+tabs.length-1)%tabs.length;break;
+   case 'ArrowRight': target=(index+1)%tabs.length;break;
+   case 'Home':target=0;break;
+   case 'End':target=tabs.length-1;break;
+   default:return;
+  }
+  event.preventDefault();
+  showTab(tabs[target],true);
+ };
  opener.onclick=()=>{showTab('models');if(!matchMedia('(max-width:800px)').matches)search.focus({preventScroll:true});};
  for(const group of [{id:'all',name:'Все'},{id:'favorites',name:'★ Избранное'},{id:'recent',name:'Недавние'},...modelGroups]){
   const el=button(group.name,()=>{category=group.id;render();});el.dataset.modelFilter=group.id;el.setAttribute('aria-pressed','false');filters.append(el);
  }
  function syncCards(){
-  for(const card of list.children){const id=card.dataset.modelId,active=id===selectedId,loading=busy&&id===pending;
+  for(const card of list.children){const id=card.dataset.modelId,active=id===selectedId&&isReady(),loading=busy&&id===pending;
    card.classList.toggle('selected',active);card.classList.toggle('is-loading',loading);
    const pick=card.querySelector('.model-pick');pick.disabled=busy;pick.setAttribute('aria-pressed',String(active));pick.setAttribute('aria-busy',String(loading));
    card.querySelector('.model-check').hidden=!active;
@@ -60,7 +77,7 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
   $('model-sort').disabled=category==='recent';const fragment=document.createDocumentFragment();
   for(const model of visible){
    const group=modelGroupById.get(model.id),card=document.createElement('article');card.className='model-card';card.dataset.modelId=model.id;
-   const pick=button('',async()=>{if(busy||model.id===selectedId)return;
+   const pick=button('',async()=>{if(busy||model.id===selectedId&&isReady())return;
     pending=model.id;setBusy(true);try{await onChoose(model.id);}finally{pending=null;setBusy(false);}
    });pick.className='model-pick';pick.setAttribute('aria-label','Выбрать модель: '+model.name);
    const picture=document.createElement('div');picture.className='model-picture';
@@ -86,7 +103,10 @@ export function setupModelBrowser({models,selectedId,onChoose,english}){
  $('model-reset').onclick=()=>{search.value='';category='all';render();};
  window.addEventListener('zm-rush:languagechange',()=>{if(rendered)render();});
  const topButton=$('back-to-top');let scrollFrame=0;
- function updateBackToTop(){const activeList=$('models-panel').hidden?$('items'):list;topButton.hidden=Math.max(window.scrollY,activeList.scrollTop)<=Math.max(240,window.innerHeight*.5);}
+ function updateBackToTop(){
+  const activeList=activeTab==='models'?list:activeTab==='hats'?$('items'):null;
+  topButton.hidden=Math.max(window.scrollY,activeList?.scrollTop||0)<=Math.max(240,window.innerHeight*.5);
+ }
  function scheduleScrollUpdate(){if(scrollFrame)return;scrollFrame=requestAnimationFrame(()=>{scrollFrame=0;updateBackToTop();});}
  window.addEventListener('scroll',scheduleScrollUpdate,{passive:true});window.addEventListener('resize',scheduleScrollUpdate);
  for(const grid of [$('items'),list])grid.addEventListener('scroll',scheduleScrollUpdate,{passive:true});

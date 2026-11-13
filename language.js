@@ -1,5 +1,18 @@
 import {playerNamePairs} from './player-catalog.js?v=7';
 const pairs=`Маленькие скины|Small skins
+Оружие|Weapons
+Шапка|Hat
+ТОВАР ДЛЯ ПОКУПКИ|ITEM TO BUY
+Товар для покупки|Item to buy
+Товар не выбран|No item selected
+Цена по запросу|Price on request
+Повторить загрузку|Retry loading
+Не удалось загрузить модель.|Could not load the model.
+Повторите загрузку или выберите другую модель.|Retry loading or choose another model.
+Не удалось запустить 3D. Откройте приложение в другом браузере.|Could not start 3D. Open the app in another browser.
+/ день|/ day
+/ неделя|/ week
+/ год|/ year
 месяц|month
 мес.|mo.
 Вернуться наверх|Back to top
