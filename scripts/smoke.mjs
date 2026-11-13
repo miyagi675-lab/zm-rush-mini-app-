@@ -46,6 +46,7 @@ await new Promise((done, reject) => {
 const origin = 'http://127.0.0.1:' + server.address().port;
 const models = '#model-items .model-pick';
 const pause = '#snapshot';
+const defaultModel = /\/assets\/(?:web-v2\/)?gign\.mdl(?:\.gz)?(?:\?|$)/;
 let browser;
 
 async function newPage(width, height) {
@@ -67,8 +68,26 @@ async function newPage(width, height) {
   });
   const page = await context.newPage();
   const errors = [];
+  const requestFailures = [];
   page.on('pageerror', error => errors.push(error.message));
-  return {page, errors, context};
+  page.on('requestfailed', request => {
+    requestFailures.push(request.url() + ': ' + request.failure()?.errorText);
+  });
+  page.on('response', response => {
+    if (!response.ok()) requestFailures.push(response.url() + ': HTTP ' + response.status());
+  });
+  return {page, errors, requestFailures, context};
+}
+
+async function waitForRetry(page, errors, requestFailures) {
+  const retry = page.locator('#retry-model');
+  try {
+    await retry.waitFor({state: 'visible'});
+  } catch (error) {
+    const loading = await page.locator('#loading-message').textContent({timeout: 1000}).catch(() => null);
+    throw new Error('Retry button did not appear. ' + JSON.stringify({loading, errors, requestFailures}), {cause:error});
+  }
+  return retry;
 }
 
 async function loadOk(page) {
@@ -96,21 +115,24 @@ try {
     args: ['--use-gl=angle', '--use-angle=swiftshader'],
   });
   {
-    const {page, errors, context} = await newPage(1280, 800);
+    const {page, errors, requestFailures, context} = await newPage(1280, 800);
     try {
-      let failed = false;
-      await page.route('**/assets/web-v2/gign.mdl.gz', async route => {
-        if (failed) return route.continue();
-        failed = true;
+      let outage = true;
+      let failures = 0;
+      await page.route(defaultModel, async route => {
+        // The prefetch can fail before the app attaches to the same load. Keep
+        // the initial outage active through both possible attempts.
+        if (!outage) return route.continue();
+        failures++;
         await route.fulfill({status: 503, body: 'Simulated temporary outage'});
       });
       await page.goto(origin + mount);
-      const retry = page.locator('#retry-model');
-      await retry.waitFor({state: 'visible'});
-      assert(failed);
+      const retry = await waitForRetry(page, errors, requestFailures);
+      assert(failures > 0);
       await page.locator('#open-models').click();
       await page.locator(models).first().waitFor({state: 'visible'});
       assert(await page.locator(models).first().isEnabled(), 'Model picker must remain available after an error');
+      outage = false;
       await retry.click();
       await loadOk(page);
       assert.equal(await retry.isVisible(), false);
@@ -126,13 +148,13 @@ try {
     }
   }
   {
-    const {page, errors, context} = await newPage(390, 844);
+    const {page, errors, requestFailures, context} = await newPage(390, 844);
     try {
-      await page.route('**/assets/web-v2/gign.mdl.gz', route => route.fulfill({
+      await page.route(defaultModel, route => route.fulfill({
         status: 503, body: 'Simulated unavailable model',
       }));
       await page.goto(origin + mount);
-      await page.locator('#retry-model').waitFor({state: 'visible'});
+      await waitForRetry(page, errors, requestFailures);
       await page.locator('#open-models').click();
       await page.locator('#model-items [data-model-id="dobby"] .model-pick').click();
       await loadOk(page);
