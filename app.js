@@ -8,8 +8,8 @@ import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
 import {setupModelBrowser} from './model-browser.js?v=10';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPriceLabel, modelPrices} from './model-prices.js?v=2';
-import {fitWeapon, prepareWeapon, setupWeaponBrowser} from './weapon-browser.js?v=2';
-import {weapons} from './weapon-catalog.js?v=1';
+import {fitWeapon, prepareWeapon, setupWeaponBrowser} from './weapon-browser.js?v=3';
+import {weapons} from './weapon-catalog.js?v=2';
 
 const $=id=>document.getElementById(id);
 const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГОЕ'};

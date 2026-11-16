@@ -66,11 +66,6 @@ export const weapons = [
     "category": "pistol"
   },
   {
-    "id": "desert-eagle-trigger-discipline-stattrak",
-    "name": "Desert Eagle | Trigger Discipline · StatTrak",
-    "category": "pistol"
-  },
-  {
     "id": "ak-47-dragon-lore",
     "name": "AK-47 | Dragon Lore",
     "category": "rifle"

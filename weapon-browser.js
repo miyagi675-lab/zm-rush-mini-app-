@@ -1,6 +1,6 @@
 import {Matrix4, Vector3} from './vendor/three.module.js';
 import {createPreviewLoader} from './preview-loader.js?v=1';
-import {weapons} from './weapon-catalog.js?v=1';
+import {weapons} from './weapon-catalog.js?v=2';
 
 export function prepareWeapon(model, entry) {
   const hand = model.userData.bones.get(entry.sourceHand || 'Bip01 R Hand');
