@@ -76,6 +76,17 @@
 .studio-prices[hidden], .studio-price[hidden] {
   display: none;
 }
+.has-three-prices .studio-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 10px;
+}
+.has-three-prices .model-identity {
+  display: contents;
+}
+.has-three-prices .studio-prices {
+  grid-column: 1 / -1;
+}
 @keyframes model-price-pulse {
   0%, 100% {
     border-color: #668748;
@@ -111,6 +122,11 @@
     animation: none;
   }
 }
+@media (max-width: 360px) {
+  .has-three-prices .view-controls { top: 64px; }
+  .has-three-prices .camera-views { top: 109px; }
+  .has-three-prices #viewport { top: 148px; }
+}
 
 .catalog-tabs > button {
   min-width: 0;
@@ -123,13 +139,16 @@
 #weapon-items .item-name {
   overflow-wrap: anywhere;
 }
-.weapon-card-price {
+.catalog-item-price {
   display: block;
   margin: 0 8px 8px;
   color: #e1ffa9;
   font-size: 10px;
   font-weight: 650;
   white-space: nowrap;
+}
+#items .item-type {
+  margin-bottom: 4px;
 }
 
 .details {

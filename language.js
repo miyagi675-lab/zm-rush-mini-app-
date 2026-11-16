@@ -23,6 +23,7 @@ const pairs=`Маленькие скины|Small skins
 / неделя|/ week
 / год|/ year
 месяц|month
+навсегда|forever
 мес.|mo.
 Вернуться наверх|Back to top
 Наверх|Top

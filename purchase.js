@@ -31,6 +31,7 @@ export function productPrice(price) {
     maximumFractionDigits: 2,
   }).format(price.amount);
   const period = periods.get(price.period);
+  if (price.period === 'lifetime') return amount + ' · навсегда';
   return period ? amount + ' / ' + period : amount;
 }
 

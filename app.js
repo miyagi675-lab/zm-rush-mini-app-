@@ -1,5 +1,5 @@
-import {setupPurchase} from './purchase.js?v=6';
-import {english} from './language.js?v=15';
+import {productPrice,setupPurchase} from './purchase.js?v=7';
+import {english} from './language.js?v=16';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL,measureMDLPose} from './mdl.js?v=8';
@@ -8,7 +8,8 @@ import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
 import {setupModelBrowser} from './model-browser.js?v=10';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPriceLabel, modelPrices} from './model-prices.js?v=2';
-import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=6';
+import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=7';
+import {hatPrices} from './hat-prices.js?v=1';
 import {weapons} from './weapon-catalog.js?v=4';
 
 const $=id=>document.getElementById(id);
@@ -60,7 +61,7 @@ const purchase = setupPurchase(() => {
   const price = Number.isInteger(amount) ? {amount, currency: 'RUB', period: 'month'} : null;
   return [
     {id: player.id, name: player.name, type: 'model', price},
-    current && {id: current.id, name: current.name, type: 'hat', price: null},
+    current && {id: current.id, name: current.name, type: 'hat', price: hatPrices[current.id]},
     equippedWeapon && {...equippedWeapon, type: 'weapon', price: weaponPrice},
   ];
 }, () => selectionBusy || !ready);
@@ -78,7 +79,8 @@ function renderCatalog(){
   const img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';img.width=256;img.height=256;img.dataset.preview='assets/previews-v2/'+e.id+'.webp';
   const name=document.createElement('span');name.className='item-name';name.textContent=e.name;
   const category=document.createElement('span');category.className='item-type';category.textContent=categories[e.category];
-  pick.append(img,name,category);pick.onclick=()=>selectLook(e,{},true);pick.onpointerenter=pick.onfocus=()=>{if(ready)prefetchModel('hats/'+e.id+'.mdl');};
+  const price=document.createElement('span');price.className='catalog-item-price';price.textContent=productPrice(hatPrices[e.id]);
+  pick.append(img,name,category,price);pick.onclick=()=>selectLook(e,{},true);pick.onpointerenter=pick.onfocus=()=>{if(ready)prefetchModel('hats/'+e.id+'.mdl');};
   const fav=document.createElement('button');fav.className='favorite';fav.textContent=favorites.has(e.id)?'★':'☆';fav.title=favorites.has(e.id)?'Убрать из избранного':'Добавить в избранное';fav.setAttribute('aria-label',fav.title);fav.setAttribute('aria-pressed',String(favorites.has(e.id)));
   fav.onclick=ev=>{ev.stopPropagation();favorites.has(e.id)?favorites.delete(e.id):favorites.add(e.id);localStorage.setItem('zm-rush-favorites',JSON.stringify([...favorites]));renderCatalog();};
   card.append(pick,fav);if(current?.id===e.id){const check=document.createElement('span');check.className='check';check.textContent='✓';card.append(check);}$('items').append(card);
@@ -124,13 +126,16 @@ function refreshPreviewPrices() {
   const prices = $('studio-prices');
   const modelPrice = modelPriceLabel(player.id);
   const weaponPrice = equippedWeapon ? 'Оружие · ' + weaponPriceLabel : '';
-  for (const [id, label] of [['model-price', modelPrice], ['weapon-price', weaponPrice]]) {
+  const hatPrice = current && hatPrices[current.id] ? 'Шапка · ' + productPrice(hatPrices[current.id]) : '';
+  for (const [id, label] of [['model-price', modelPrice], ['weapon-price', weaponPrice], ['hat-price', hatPrice]]) {
     const badge = $(id);
     badge.textContent = label;
     badge.hidden = !label;
   }
-  prices.hidden = !modelPrice && !weaponPrice;
-  prices.closest('.studio').classList.toggle('has-preview-prices', !prices.hidden);
+  prices.hidden = !modelPrice && !weaponPrice && !hatPrice;
+  const studio = prices.closest('.studio');
+  studio.classList.toggle('has-preview-prices', !prices.hidden);
+  studio.classList.toggle('has-three-prices', Boolean(modelPrice && weaponPrice && hatPrice));
 }
 
 function beginLoading(message) {
@@ -151,6 +156,7 @@ async function selectLook(entry,nextBody={},writeSlot=true){
  try{
   let next=null,key;if(entry){const lookup=fittedHat(entry,nextBody);key=lookup.key;next=lookup.cached;if(!next){const buffer=await load('hats/'+entry.id+'.mdl',{onProgress:p=>{if(token===ticket)progressFor('Примеряем '+entry.name+'…')(p);}});if(token!==ticket)return;next=parseMDL(buffer,ct.userData.bones,0,nextBody,hatScaleFor(player,entry),indexedMesh);fittedHats.set(key,next);}}
   if(token!==ticket)return;if(hat)rig.remove(hat);hat=next;if(hat)rig.add(hat);trimHats();current=entry;body=nextBody;
+  refreshPreviewPrices();
   $('selected-name').textContent=entry?.name||'Без шапки';$('detail-name').textContent=entry?.name||player.name;$('detail-file').textContent=entry?entry.id+'.mdl · '+player.name:'Модель '+player.name;$('variants').replaceChildren();
   for(const variant of hat?.userData.variants||[]){const label=document.createElement('label');label.textContent='Вариант';const select=document.createElement('select');variant.names.forEach((name,index)=>{const option=document.createElement('option');option.value=index;option.textContent=name;select.append(option);});select.value=body[variant.part]||0;select.onchange=()=>selectLook(current,{...body,[variant.part]:Number(select.value)},true);label.append(select);$('variants').append(label);}
   if(writeSlot){slots[activeSlot]=entry?{id:entry.id,name:entry.name,body:{...nextBody}}:null;localStorage.setItem('zm-rush-slots',JSON.stringify(slots));}
