@@ -1,4 +1,4 @@
-import {setupPurchase} from './purchase.js?v=5';
+import {setupPurchase} from './purchase.js?v=6';
 import {english} from './language.js?v=15';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
@@ -8,7 +8,7 @@ import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
 import {setupModelBrowser} from './model-browser.js?v=10';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPriceLabel, modelPrices} from './model-prices.js?v=2';
-import {fitWeapon, prepareWeapon, setupWeaponBrowser} from './weapon-browser.js?v=5';
+import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=6';
 import {weapons} from './weapon-catalog.js?v=4';
 
 const $=id=>document.getElementById(id);
@@ -61,7 +61,7 @@ const purchase = setupPurchase(() => {
   return [
     {id: player.id, name: player.name, type: 'model', price},
     current && {id: current.id, name: current.name, type: 'hat', price: null},
-    equippedWeapon && {...equippedWeapon, type: 'weapon', price: null},
+    equippedWeapon && {...equippedWeapon, type: 'weapon', price: weaponPrice},
   ];
 }, () => selectionBusy || !ready);
 function syncSelection(){for(const card of $('items').children){const selected=card.dataset.id===current?.id;card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
@@ -120,6 +120,19 @@ function setBusy(value) {
   syncWeapons(equippedWeapon, value || !ready);
   purchase.refresh();
 }
+function refreshPreviewPrices() {
+  const prices = $('studio-prices');
+  const modelPrice = modelPriceLabel(player.id);
+  const weaponPrice = equippedWeapon ? 'Оружие · ' + weaponPriceLabel : '';
+  for (const [id, label] of [['model-price', modelPrice], ['weapon-price', weaponPrice]]) {
+    const badge = $(id);
+    badge.textContent = label;
+    badge.hidden = !label;
+  }
+  prices.hidden = !modelPrice && !weaponPrice;
+  prices.closest('.studio').classList.toggle('has-preview-prices', !prices.hidden);
+}
+
 function beginLoading(message) {
   retryPlayerId = null;
   $('retry-model').hidden = true;
@@ -168,6 +181,7 @@ async function selectWeapon(entry, purchaseWeapon = true) {
       fitWeapon(weapon, ct, animatedFraming.height);
       rig.add(weapon);
     }
+    refreshPreviewPrices();
     purchase.refresh(entry && purchaseWeapon ? 'weapon' : undefined);
     toast('');
   } catch (error) {
@@ -281,10 +295,7 @@ async function choosePlayer(id,initial=false){
   animationTime=0;ready=true;
   updateAnimation(0);
   frame(isClose());$('model-label').textContent=player.name;
-  const price=modelPriceLabel(player.id),priceLabel=$('model-price');
-  priceLabel.textContent=price;
-  priceLabel.hidden=!price;
-  priceLabel.closest('.studio').classList.toggle('has-model-price',Boolean(price));
+  refreshPreviewPrices();
   $('detail-name').textContent=current?.name||player.name;$('detail-file').textContent=current?current.id+'.mdl · '+player.name:'Модель '+player.name;
   try { localStorage.setItem('zm-rush-player',JSON.stringify(player.id)); } catch {}
   performance.measure('zm-rush:model-ready',{start:started});

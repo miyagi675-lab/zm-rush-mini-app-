@@ -196,19 +196,21 @@ try {
       const weapon = page.locator('[data-weapon-id="ak-47-dollar"] .item-pick');
       await page.locator('#weapon-search').fill('Dollar');
       assert.equal(await page.locator('#weapon-items article').count(), 1);
+      assert.equal(await weapon.locator('.weapon-card-price').textContent(), '$9 / месяц');
       const thumbnail = weapon.locator('img');
       await page.waitForFunction(() => document.querySelector('#weapon-items img')?.naturalWidth > 0);
       assert.match(await thumbnail.getAttribute('src'), /ak-47-dollar\.webp\?v=2$/);
       await weapon.click();
       await loadOk(page);
       assert.equal(await weapon.getAttribute('aria-pressed'), 'true');
-      await assertPurchase(page, 'AK-47 | Dollar', /^Цена по запросу$/);
+      await assertPurchase(page, 'AK-47 | Dollar', /^\$9 \/ месяц$/);
+      assert.equal(await page.locator('#weapon-price').textContent(), 'Оружие · $9 / месяц');
       await page.locator('#weapon-search').fill('Tron');
       const tron = page.locator('[data-weapon-id="ak-47-tron"] .item-pick');
       await tron.click();
       await loadOk(page);
       assert.equal(await tron.getAttribute('aria-pressed'), 'true');
-      await assertPurchase(page, 'AK-47 | Tron', /^Цена по запросу$/);
+      await assertPurchase(page, 'AK-47 | Tron', /^\$9 \/ месяц$/);
       await page.locator('#tab-weapons').press('Home');
       assert.equal(await page.locator('#tab-hats').getAttribute('aria-selected'), 'true');
       await assertOffscreenStudio(page);
@@ -283,7 +285,14 @@ try {
       const knife = page.locator('[data-weapon-id="butterfly-knife-doppler-sapphire"] .item-pick');
       await knife.click();
       await loadOk(page);
-      await assertPurchase(page, 'Butterfly Knife | Doppler Sapphire', /^Цена по запросу$/);
+      await assertPurchase(page, 'Butterfly Knife | Doppler Sapphire', /^\$9 \/ месяц$/);
+      assert(await page.locator('#model-price').isVisible());
+      assert(await page.locator('#weapon-price').isVisible());
+      const modelBadge = await page.locator('#model-price').boundingBox();
+      const weaponBadge = await page.locator('#weapon-price').boundingBox();
+      const viewControls = await page.locator('.view-controls').boundingBox();
+      assert(modelBadge.x + modelBadge.width <= weaponBadge.x, 'Both prices should fit side by side');
+      assert(weaponBadge.y + weaponBadge.height <= viewControls.y, 'Price badges should clear camera controls');
       await page.locator('#tab-models').click();
       await page.locator('#model-items [data-model-id="p_small_sonic"] .model-pick').click();
       await loadOk(page);
@@ -291,6 +300,7 @@ try {
       await page.locator('#tab-weapons').click();
       await page.locator('#remove-weapon').click();
       assert.equal(await knife.getAttribute('aria-pressed'), 'false');
+      assert.equal(await page.locator('#weapon-price').isVisible(), false);
       assert.deepEqual(errors, []);
     } finally {
       await context.close();

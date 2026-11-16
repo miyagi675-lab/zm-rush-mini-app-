@@ -21,10 +21,10 @@ export function purchaseDraft(entry, seller) {
   return {text, url: url.href + '?text=' + encodeURIComponent(text)};
 }
 
-function productPrice(price) {
+export function productPrice(price) {
   if (!price || !Number.isFinite(price.amount) || price.amount <= 0) return 'Цена по запросу';
 
-  const amount = new Intl.NumberFormat('ru-RU', {
+  const amount = new Intl.NumberFormat(price.currency === 'USD' ? 'en-US' : 'ru-RU', {
     style: 'currency',
     currency: price.currency,
     minimumFractionDigits: 0,

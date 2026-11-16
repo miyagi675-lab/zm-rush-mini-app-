@@ -48,22 +48,32 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#model-price {
+.studio-prices {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 3px 5px;
+  max-width: 100%;
+}
+.studio-price {
   flex-shrink: 0;
   padding: 2px 6px;
   border: 1px solid #668748;
   border-radius: 7px;
   background: #26371f;
   color: #e1ffa9;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   line-height: 1.25;
   white-space: nowrap;
+}
+#model-price {
   animation: model-price-pulse 2.2s ease-in-out infinite;
 }
-#model-price[hidden] {
+.studio-prices[hidden], .studio-price[hidden] {
   display: none;
 }
 @keyframes model-price-pulse {
@@ -82,13 +92,17 @@
     align-items: flex-end;
     gap: 3px;
   }
-  .has-model-price .view-controls {
+  .studio-price {
+    font-size: 9px;
+    padding: 2px 4px;
+  }
+  .has-preview-prices .view-controls {
     top: 56px;
   }
-  .has-model-price .camera-views {
+  .has-preview-prices .camera-views {
     top: 101px;
   }
-  .has-model-price #viewport {
+  .has-preview-prices #viewport {
     top: 140px;
   }
 }
@@ -108,7 +122,14 @@
 
 #weapon-items .item-name {
   overflow-wrap: anywhere;
-  padding-bottom: 8px;
+}
+.weapon-card-price {
+  display: block;
+  margin: 0 8px 8px;
+  color: #e1ffa9;
+  font-size: 10px;
+  font-weight: 650;
+  white-space: nowrap;
 }
 
 .details {

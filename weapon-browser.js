@@ -1,5 +1,6 @@
 import {Box3, Matrix4, Vector3} from './vendor/three.module.js';
 import {createPreviewLoader} from './preview-loader.js?v=1';
+import {productPrice} from './purchase.js?v=6';
 import {weapons} from './weapon-catalog.js?v=4';
 
 export function prepareWeapon(model, entry) {
@@ -73,6 +74,8 @@ export function fitWeapon(weapon, player, height) {
 }
 
 const categories = {all:'Все', rifle:'Винтовки', pistol:'Пистолеты', knife:'Ножи'};
+export const weaponPrice = Object.freeze({amount: 9, currency: 'USD', period: 'month'});
+export const weaponPriceLabel = productPrice(weaponPrice);
 
 export function setupWeaponBrowser(onChoose) {
   const list = document.getElementById('weapon-items');
@@ -121,7 +124,10 @@ export function setupWeaponBrowser(onChoose) {
       const name = document.createElement('span');
       name.className = 'item-name';
       name.textContent = entry.name;
-      button.append(image, name);
+      const price = document.createElement('span');
+      price.className = 'weapon-card-price';
+      price.textContent = weaponPriceLabel;
+      button.append(image, name, price);
       card.append(button);
       fragment.append(card);
     }
