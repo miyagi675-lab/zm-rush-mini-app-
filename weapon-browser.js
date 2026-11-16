@@ -1,14 +1,20 @@
 import {Box3, Matrix4, Vector3} from './vendor/three.module.js';
 import {createPreviewLoader} from './preview-loader.js?v=1';
-import {weapons} from './weapon-catalog.js?v=3';
+import {weapons} from './weapon-catalog.js?v=4';
 
 export function prepareWeapon(model, entry) {
-  const hand = model.userData.bones.get(entry.sourceHand || 'Bip01 R Hand');
-  if (!hand) throw Error('Не удалось определить рукоять');
-  const toGrip = hand.clone();
-  // Use the handle as the origin while keeping the source hand's orientation.
-  if (entry.grip) toGrip.setPosition(...entry.grip);
-  toGrip.invert();
+  const toGrip = new Matrix4();
+  if (entry.viewTransform) {
+    // First-person exports use a different coordinate system from held models.
+    toGrip.fromArray(entry.viewTransform);
+  } else {
+    const hand = model.userData.bones.get(entry.sourceHand || 'Bip01 R Hand');
+    if (!hand) throw Error('Не удалось определить рукоять');
+    toGrip.copy(hand);
+    // Use the handle as the origin while keeping the source hand's orientation.
+    if (entry.grip) toGrip.setPosition(...entry.grip);
+    toGrip.invert();
+  }
   for (const mesh of model.children) mesh.geometry.applyMatrix4(toGrip);
   model.matrixAutoUpdate = false;
   model.userData.gripInPalm = Boolean(entry.grip);

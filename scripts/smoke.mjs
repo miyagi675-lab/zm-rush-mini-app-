@@ -203,6 +203,12 @@ try {
       await loadOk(page);
       assert.equal(await weapon.getAttribute('aria-pressed'), 'true');
       await assertPurchase(page, 'AK-47 | Dollar', /^Цена по запросу$/);
+      await page.locator('#weapon-search').fill('Tron');
+      const tron = page.locator('[data-weapon-id="ak-47-tron"] .item-pick');
+      await tron.click();
+      await loadOk(page);
+      assert.equal(await tron.getAttribute('aria-pressed'), 'true');
+      await assertPurchase(page, 'AK-47 | Tron', /^Цена по запросу$/);
       await page.locator('#tab-weapons').press('Home');
       assert.equal(await page.locator('#tab-hats').getAttribute('aria-selected'), 'true');
       await assertOffscreenStudio(page);

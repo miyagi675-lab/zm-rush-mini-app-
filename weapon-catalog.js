@@ -91,6 +91,153 @@ export const weapons = [
     "category": "rifle"
   },
   {
+    "id": "ak-47-ambient",
+    "name": "AK-47 | Ambient",
+    "category": "rifle"
+  },
+  {
+    "id": "ak-47-banshee",
+    "name": "AK-47 | Banshee",
+    "category": "rifle"
+  },
+  {
+    "id": "ak-47-fade",
+    "name": "AK-47 | Fade",
+    "category": "rifle"
+  },
+  {
+    "id": "ak-47-golden-anim",
+    "name": "AK-47 | Golden Anim",
+    "category": "rifle",
+    "viewTransform": [
+      1.005958,
+      0.114162,
+      -0.174424,
+      0,
+      -0.11289,
+      1.020965,
+      0.017162,
+      0,
+      0.175251,
+      0.002362,
+      1.01227,
+      0,
+      -5.014605,
+      -9.770703,
+      9.627624,
+      1
+    ]
+  },
+  {
+    "id": "ak-47-golden-cartel",
+    "name": "AK-47 | Golden Cartel",
+    "category": "rifle"
+  },
+  {
+    "id": "ak-47-heat",
+    "name": "AK-47 | Heat",
+    "category": "rifle"
+  },
+  {
+    "id": "ak-47-hunger",
+    "name": "AK-47 | Hunger",
+    "category": "rifle"
+  },
+  {
+    "id": "ak-47-outlaw",
+    "name": "AK-47 | Outlaw",
+    "category": "rifle"
+  },
+  {
+    "id": "ak-47-royal-platinum-gold",
+    "name": "AK-47 | Royal Platinum Gold",
+    "category": "rifle"
+  },
+  {
+    "id": "ak-47-samurai",
+    "name": "AK-47 | Samurai",
+    "category": "rifle"
+  },
+  {
+    "id": "ak-47-starline-container",
+    "name": "AK-47 | Starline Container",
+    "category": "rifle"
+  },
+  {
+    "id": "ak-47-tron",
+    "name": "AK-47 | Tron",
+    "category": "rifle",
+    "viewTransform": [
+      1.304137,
+      0.148001,
+      -0.226126,
+      0,
+      -0.146352,
+      1.323592,
+      0.022249,
+      0,
+      0.227197,
+      0.003062,
+      1.312319,
+      0,
+      -3.456538,
+      -11.027732,
+      11.587966,
+      1
+    ]
+  },
+  {
+    "id": "ak-47-warzilla-red-rage",
+    "name": "AK-47 | Warzilla Red Rage",
+    "category": "rifle"
+  },
+  {
+    "id": "ak-47-wild-lotus-dignitas-holo",
+    "name": "AK-47 | Wild Lotus + Dignitas (Holo)",
+    "category": "rifle",
+    "viewTransform": [
+      0.41744,
+      0.047374,
+      -0.07238,
+      0,
+      -0.046845,
+      0.423667,
+      0.007122,
+      0,
+      0.072723,
+      0.00098,
+      0.420059,
+      0,
+      -1.742014,
+      -9.902945,
+      9.233737,
+      1
+    ]
+  },
+  {
+    "id": "ak-47-aquamarine-revenge-reason-holo-stattrak",
+    "name": "AK-47 | Aquamarine Revenge + Reason (Holo) · StatTrak",
+    "category": "rifle",
+    "viewTransform": [
+      0.41739,
+      0.047368,
+      -0.072372,
+      0,
+      -0.04684,
+      0.423617,
+      0.007121,
+      0,
+      0.072715,
+      0.00098,
+      0.420009,
+      0,
+      -1.741472,
+      -9.901905,
+      9.2326,
+      1
+    ]
+  },
+  {
     "id": "awp-dragon-lore",
     "name": "AWP | Dragon Lore",
     "category": "rifle"

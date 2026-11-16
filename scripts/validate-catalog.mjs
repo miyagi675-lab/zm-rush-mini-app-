@@ -34,6 +34,9 @@ async function validateMdl(path, packed, weapon) {
   const model = parseMDL(buffer, null, weapon ? 0 : 1);
   try {
     if (weapon) {
+      if (weapon.viewTransform) {
+        assert(weapon.viewTransform.length === 16 && weapon.viewTransform.every(Number.isFinite), path + ': invalid fitted view transform');
+      }
       if (weapon.category === 'knife') {
         assert(weapon.grip?.length === 3 && weapon.grip.every(Number.isFinite), path + ': missing knife grip');
       }
