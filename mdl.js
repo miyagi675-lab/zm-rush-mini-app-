@@ -69,3 +69,20 @@ export function parseMDL(buffer,targetBones=null,sequence=0,body={},attachmentSc
  return group;
 }
 export function disposeMDL(group){group.traverse(o=>o.geometry?.dispose());for(const m of group.userData.materials||[]){m?.map?.dispose();m?.dispose();}}
+
+export function measureMDLPose(model) {
+  const bounds = new T.Box3();
+  const meshBounds = new T.Box3();
+  for (const {geometry} of model.userData.meshes) {
+    const positions = geometry.attributes.position;
+    if (positions.count) bounds.union(meshBounds.setFromBufferAttribute(positions));
+  }
+  const height = bounds.max.z - bounds.min.z;
+  if (!Number.isFinite(height) || height <= 0) throw Error('Некорректные габариты модели');
+
+  const headBone = model.userData.bones.get('Bip01 Head');
+  const head = headBone
+    ? new T.Vector3().setFromMatrixPosition(headBone)
+    : bounds.getCenter(new T.Vector3()).setZ(bounds.min.z + height*.85);
+  return {floor:bounds.min.z, height, head};
+}

@@ -2,7 +2,7 @@ import {setupPurchase} from './purchase.js?v=5';
 import {english} from './language.js?v=15';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
-import {parseMDL,disposeMDL} from './mdl.js?v=7';
+import {parseMDL,disposeMDL,measureMDLPose} from './mdl.js?v=8';
 import {entries,playerModels} from './catalog.js?v=11';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
 import {setupModelBrowser} from './model-browser.js?v=10';
@@ -16,6 +16,7 @@ const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГ
 const fittedHats=new Map();
 const playerCache=new Map();
 const indexedMesh = {indexed:true};
+const platformTop = .3;
 function ensureHead(model){if(model.userData.bones.has('Bip01 Head'))return;const parent=model.userData.bones.get('Bip01 Neck')||model.userData.bones.values().next().value;if(!parent)return;const bounds=new T.Box3().setFromObject(model),offset=new T.Matrix4().makeTranslation(0,0,Math.max(0,bounds.max.z-parent.elements[14]-3)),matrix=parent.clone().multiply(offset);model.userData.bones.set('Bip01 Head',matrix);const update=model.userData.updatePose;model.userData.updatePose=(...args)=>{update(...args);matrix.copy(parent).multiply(offset);};}
 function trimPlayers(){for(const [id,model] of playerCache){if(playerCache.size<=2)break;if(id===player.id)continue;playerCache.delete(id);disposeMDL(model);for(const [key,look] of fittedHats)if(key.startsWith(id+':')){fittedHats.delete(key);disposeMDL(look);}}}
 function fittedHat(entry,nextBody,model=player){const key=model.id+':'+entry.id+':'+JSON.stringify(nextBody);const cached=fittedHats.get(key);if(cached){fittedHats.delete(key);fittedHats.set(key,cached);}return {key,cached};}
@@ -26,6 +27,7 @@ const favorites=new Set(readJSON('zm-rush-favorites',[]));
 const slots=readJSON('zm-rush-slots',{a:null,b:null});
 let ct,hat,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filter='all',ready=false,modelBrowser=null;
 let player=playerModels.find(m=>m.id===readJSON('zm-rush-player','gign'))||playerModels[0],modelHeight=62,modelHead=new T.Vector3(0,56,0),playerTicket=0;
+let animatedFraming;
 const motionSelect = $('motion');
 const storedMotion = readJSON('zm-rush-motion', null);
 let motion = [...motionSelect.options].some(option => option.value === storedMotion)
@@ -86,11 +88,22 @@ function renderCatalog(){
 function syncFilters(){document.querySelectorAll('[data-filter]').forEach(b=>{const on=b.dataset.filter===filter;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});}
 function lighting(target){target.add(new T.HemisphereLight(0xe6f5d8,0x6b7866,2));const key=new T.DirectionalLight(0xfff1db,1.4);key.position.set(60,100,90);target.add(key);const fill=new T.DirectionalLight(0xa7d1ef,.7);fill.position.set(-65,30,-40);target.add(fill);}
 function isClose(){return $('head').classList.contains('active');}
-function frame(close=false){
+function viewHeight(close) {
  // Use the same camera and floor reference for both Sonics: the small model is 60% of the regular model's height.
  // 85.514 is the regular Sonic's full-body height in the supplied MDL.
  // Rat keeps its existing wider view instead of being enlarged to human size.
- if(!ready)return;const sonicScale=!close&&(player.id==='p_sonic'||player.id==='p_small_sonic'),framingHeight=sonicScale?Math.max(modelHeight,85.514):player.id==='p_chick'&&!close?Math.max(modelHeight,32):modelHeight;const ratio=framingHeight/62,target=close?modelHead.clone():new T.Vector3(0,(sonicScale?framingHeight:modelHeight)*.56,0);controls.target.copy(target);const far=(close?62:112)*ratio,high=(close?8:29)*ratio;
+ if (!close && (player.id === 'p_sonic' || player.id === 'p_small_sonic')) return Math.max(modelHeight,85.514);
+ if (!close && player.id === 'p_chick') return Math.max(modelHeight,32);
+ return modelHeight;
+}
+function viewTarget(close) {
+ if (close) return modelHead.clone();
+ const height = player.id === 'p_chick' ? modelHeight : viewHeight(false);
+ return new T.Vector3(0,platformTop+height*.56,0);
+}
+function frame(close=false){
+ if(!ready)return;
+ const ratio=viewHeight(close)/62,target=viewTarget(close);controls.target.copy(target);const far=(close?62:112)*ratio,high=(close?8:29)*ratio;
  const offsets={front:new T.Vector3(far,high,0),side:new T.Vector3(0,high,far),back:new T.Vector3(-far,high,0),angle:new T.Vector3(far,high,(close?34:65)*ratio)};
  camera.position.copy(target).add(offsets[cameraView]);controls.minDistance=12*ratio;controls.maxDistance=230*ratio;controls.update();
  $('full').classList.toggle('active',!close);$('full').setAttribute('aria-pressed',String(!close));$('head').classList.toggle('active',close);$('head').setAttribute('aria-pressed',String(close));
@@ -152,7 +165,7 @@ async function selectWeapon(entry, purchaseWeapon = true) {
     weapon = next;
     equippedWeapon = entry;
     if (weapon) {
-      fitWeapon(weapon, ct, modelHeight);
+      fitWeapon(weapon, ct, animatedFraming.height);
       rig.add(weapon);
     }
     purchase.refresh(entry && purchaseWeapon ? 'weapon' : undefined);
@@ -170,6 +183,20 @@ async function selectWeapon(entry, purchaseWeapon = true) {
 function chooseSlot(key){if(!ready)return;activeSlot=key;refreshSlots();const look=slots[key],entry=look?entries.find(e=>e.id===look.id):null;selectLook(entry,look?.body||{},false);}
 function setMotion(value){motion=value;animationTime=0;animationPlaying=value!=='static';$('pause').disabled=!ready||selectionBusy||value==='static';$('pause').setAttribute('aria-pressed',String(!animationPlaying));$('pause').textContent=animationPlaying?'Пауза':'Продолжить';}
 const appliedPose = {player:null, hat:null, weapon:null, motion:null, time:null, sequence:0};
+function placePlayer(previousMotion) {
+  const close = isClose();
+  const previousTarget = previousMotion === null ? null : viewTarget(close);
+  const metrics = motion === 'static' ? measureMDLPose(ct) : animatedFraming;
+  rig.position.y = platformTop - metrics.floor;
+  rig.updateMatrixWorld(true);
+  modelHeight = metrics.height;
+  modelHead.copy(metrics.head).applyMatrix4(rig.matrixWorld);
+  if (previousTarget) {
+    const shift = viewTarget(close).sub(previousTarget);
+    controls.target.add(shift);
+    camera.position.add(shift);
+  }
+}
 function updateAnimation(delta) {
   if (!ready || !ct?.userData.updatePose) return;
   if (animationPlaying) animationTime += delta*animationSpeed;
@@ -183,8 +210,10 @@ function updateAnimation(delta) {
     sequence = motion === 'static' ? 0 : (ct.userData.sequences.find(s=>s.name.trim().toLowerCase()===motion)?.index||1);
   }
   ct.userData.updatePose(sequence, animationTime);
+  const previousMotion = appliedPose.player === ct ? appliedPose.motion : null;
+  if (previousMotion === null || (previousMotion === 'static') !== (motion === 'static')) placePlayer(previousMotion);
   hat?.userData.updatePose?.(sequence, animationTime, ct.userData.bones);
-  if (weapon) fitWeapon(weapon, ct, modelHeight);
+  if (weapon) fitWeapon(weapon, ct, animatedFraming.height);
   appliedPose.player = ct;
   appliedPose.hat = hat;
   appliedPose.weapon = weapon;
@@ -242,14 +271,16 @@ async function choosePlayer(id,initial=false){
   if(next){playerCache.delete(nextPlayer.id);playerCache.set(nextPlayer.id,next);}
   if(!next){next=parseMDL(await load(nextPlayer.file,{onProgress:p=>{if(token===playerTicket)progressFor(message)(p);}}),null,1,{},1,indexedMesh);playerCache.set(nextPlayer.id,next);}
   ensureHead(next);
+  next.userData.updatePose(1,0);
+  const nextFraming = measureMDLPose(next);
   if(current){const lookup=fittedHat(current,body,nextPlayer);nextHat=lookup.cached;if(!nextHat){nextHat=parseMDL(await load('hats/'+current.id+'.mdl'),next.userData.bones,0,body,hatScaleFor(nextPlayer,current),indexedMesh);fittedHats.set(lookup.key,nextHat);}}
   if(token!==playerTicket || !sceneAvailable)return false;
   if(hat)rig.remove(hat);if(ct)rig.remove(ct);
-  ct=next;hat=nextHat;player=nextPlayer;appliedPose.player=null;ct.userData.updatePose(1,0);rig.add(ct);if(hat){hat.userData.updatePose(1,0,ct.userData.bones);rig.add(hat);}trimHats();trimPlayers();
-  rig.position.y=0;rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(ct);rig.position.y=-bounds.min.y;rig.updateMatrixWorld(true);
-  bounds.setFromObject(ct);modelHeight=bounds.max.y;const head=ct.userData.bones.get('Bip01 Head');if(head)modelHead.setFromMatrixPosition(head).applyMatrix4(rig.matrixWorld);else bounds.getCenter(modelHead).setY(modelHeight*.85);
-  animationTime=0;ready=true;frame(isClose());$('model-label').textContent=player.name;
+  ct=next;hat=nextHat;player=nextPlayer;appliedPose.player=null;rig.add(ct);if(hat)rig.add(hat);trimHats();trimPlayers();
+  animatedFraming=nextFraming;
+  animationTime=0;ready=true;
   updateAnimation(0);
+  frame(isClose());$('model-label').textContent=player.name;
   const price=modelPriceLabel(player.id),priceLabel=$('model-price');
   priceLabel.textContent=price;
   priceLabel.hidden=!price;

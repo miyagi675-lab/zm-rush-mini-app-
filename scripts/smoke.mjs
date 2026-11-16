@@ -230,6 +230,18 @@ try {
       await loadOk(page);
       assert.equal(await page.locator('#model-label').textContent(), 'Скирк');
       await waitForStudioDraw(page);
+      await page.locator('#model-search').fill('Зоро');
+      await page.locator('[data-model-id="p_roronoa_zoro"] .model-pick').click();
+      await loadOk(page);
+      await page.locator('#head').click();
+      await page.locator('#motion').selectOption('static');
+      await waitForStudioDraw(page);
+      assert.equal(await page.locator('#head').getAttribute('aria-pressed'), 'true');
+      await page.locator('#snapshot').click();
+      assert.match(await page.locator('#photo').getAttribute('src'), /^data:image\/png;base64,/);
+      await page.locator('#close-photo').click();
+      await page.locator('#motion').selectOption('walk');
+      await waitForStudioDraw(page);
       assert.deepEqual(errors, []);
     } finally {
       await context.close();
