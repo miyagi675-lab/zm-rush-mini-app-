@@ -1,6 +1,6 @@
 import * as T from './vendor/three.module.js';
 // GoldSrc Studio v10: named-bone attachment and interpolated animation channels.
-export function parseMDL(buffer,targetBones=null,sequence=0,body={},attachmentScale=1) {
+export function parseMDL(buffer,targetBones=null,sequence=0,body={},attachmentScale=1,{indexed=false}={}) {
  const d=new DataView(buffer),bytes=new Uint8Array(buffer);
  const i=o=>d.getInt32(o,true),f=o=>d.getFloat32(o,true),s=o=>d.getInt16(o,true),u=o=>d.getUint16(o,true);
  const str=(o,n)=>new TextDecoder().decode(bytes.subarray(o,o+n)).split('\0')[0];
@@ -20,13 +20,52 @@ export function parseMDL(buffer,targetBones=null,sequence=0,body={},attachmentSc
  for(let part=0;part<i(204);part++){const p=i(208)+part*76,count=i(p+64),first=i(p+72),names=Array.from({length:count},(_,k)=>str(first+k*112,64));if(count>1)variants.push({part,names});const selected=Number.isInteger(body[part])?Math.max(0,Math.min(body[part],count-1)):0,m=first+selected*112;
   for(let mesh=0;mesh<i(m+72);mesh++){const o=i(m+76)+mesh*20,material=texture(s(i(200)+i(o+8)*2));const positions=[],normals=[],uv=[],local=[],localNormals=[],boneIds=[],normalIds=[],{w,h}=material.userData;let cursor=i(o+4),guard=0;const point=new T.Vector3(),normal=new T.Vector3();
    const emit=v=>{const vi=v[0],ni=v[1],vo=i(m+88)+vi*12,no=i(m+100)+ni*12,bi=bytes[i(m+84)+vi],bn=bytes[i(m+96)+ni],fit=typeof attachmentScale==='number'?attachmentScale:(/head|neck/i.test(definitions[bi].name)?attachmentScale.head:attachmentScale.body),offset=typeof attachmentScale==='object'&&/head/i.test(definitions[bi].name)?attachmentScale.headOffset:null;const x=f(vo)*fit+(offset?.[0]||0),y=f(vo+4)*fit+(offset?.[1]||0),z=f(vo+8)*fit+(offset?.[2]||0);local.push(x,y,z);localNormals.push(f(no),f(no+4),f(no+8));boneIds.push(bi);normalIds.push(bn);point.set(x,y,z).applyMatrix4(world[bi]);normal.set(f(no),f(no+4),f(no+8)).transformDirection(world[bn]);positions.push(...point.toArray());normals.push(...normal.toArray());uv.push(v[2]/w,v[3]/h);};
-   while(true){const n=s(cursor);cursor+=2;if(!n)break;if(++guard>50000)throw Error('Повреждённая геометрия');const vertices=[];for(let k=0;k<Math.abs(n);k++){vertices.push([s(cursor),s(cursor+2),s(cursor+4),s(cursor+6)]);cursor+=8;}for(let k=2;k<vertices.length;k++){const ids=n<0?[0,k-1,k]:k%2?[k-1,k-2,k]:[k-2,k-1,k];ids.forEach(j=>emit(vertices[j]));triangles++;}}
-   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3).setUsage(T.DynamicDrawUsage));geometry.setAttribute('normal',new T.Float32BufferAttribute(normals,3).setUsage(T.DynamicDrawUsage));geometry.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geometry.computeBoundingSphere();const object=new T.Mesh(geometry,material);object.name=str(m,64);object.frustumCulled=false;group.add(object);meshes.push({geometry,local:new Float32Array(local),localNormals:new Float32Array(localNormals),boneIds,normalIds});
+   const index = indexed ? [] : null;
+   const cornerIndices = indexed ? new Map() : null;
+   function addCorner(corner) {
+     if (!index) { emit(corner); return; }
+     // Keep normal and UV seams even when corners share a position.
+     const key = corner.join(',');
+     let id = cornerIndices.get(key);
+     if (id === undefined) {
+       id = boneIds.length;
+       cornerIndices.set(key, id);
+       emit(corner);
+     }
+     index.push(id);
+   }
+   while(true){const n=s(cursor);cursor+=2;if(!n)break;if(++guard>50000)throw Error('Повреждённая геометрия');const vertices=[];for(let k=0;k<Math.abs(n);k++){vertices.push([s(cursor),s(cursor+2),s(cursor+4),s(cursor+6)]);cursor+=8;}for(let k=2;k<vertices.length;k++){const ids=n<0?[0,k-1,k]:k%2?[k-1,k-2,k]:[k-2,k-1,k];ids.forEach(j=>addCorner(vertices[j]));triangles++;}}
+   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3).setUsage(T.DynamicDrawUsage));geometry.setAttribute('normal',new T.Float32BufferAttribute(normals,3).setUsage(T.DynamicDrawUsage));geometry.setAttribute('uv',new T.Float32BufferAttribute(uv,2));if(index)geometry.setIndex(index);geometry.computeBoundingSphere();const object=new T.Mesh(geometry,material);object.name=str(m,64);object.frustumCulled=false;group.add(object);meshes.push({geometry,local:new Float32Array(local),localNormals:new Float32Array(localNormals),boneIds,normalIds});
   }
  }
- const point=new T.Vector3(),normal=new T.Vector3();
  group.userData={bones,variants,triangles,materials,sequences,definitions,meshes};
- group.userData.updatePose=(seq=sequence,time=0,target=targetBones)=>{pose(seq,time,target);for(const mesh of meshes){const {geometry,local,localNormals,boneIds,normalIds}=mesh;for(let n=0;n<boneIds.length;n++){point.fromArray(local,n*3).applyMatrix4(world[boneIds[n]]).toArray(geometry.attributes.position.array,n*3);normal.fromArray(localNormals,n*3).transformDirection(world[normalIds[n]]).toArray(geometry.attributes.normal.array,n*3);}geometry.attributes.position.needsUpdate=true;geometry.attributes.normal.needsUpdate=true;}};
+ group.userData.updatePose = (seq=sequence, time=0, target=targetBones) => {
+   pose(seq,time,target);
+   for (const {geometry,local,localNormals,boneIds,normalIds} of meshes) {
+     const {position,normal} = geometry.attributes;
+     const positions = position.array;
+     const normals = normal.array;
+     for (let n=0, k=0; n<boneIds.length; n++, k+=3) {
+       const p = world[boneIds[n]].elements;
+       const x = local[k], y = local[k+1], z = local[k+2];
+       positions[k] = p[0]*x + p[4]*y + p[8]*z + p[12];
+       positions[k+1] = p[1]*x + p[5]*y + p[9]*z + p[13];
+       positions[k+2] = p[2]*x + p[6]*y + p[10]*z + p[14];
+
+       const r = world[normalIds[n]].elements;
+       const nx = localNormals[k], ny = localNormals[k+1], nz = localNormals[k+2];
+       const rx = r[0]*nx + r[4]*ny + r[8]*nz;
+       const ry = r[1]*nx + r[5]*ny + r[9]*nz;
+       const rz = r[2]*nx + r[6]*ny + r[10]*nz;
+       const inverseLength = 1 / (Math.sqrt(rx*rx + ry*ry + rz*rz) || 1);
+       normals[k] = rx*inverseLength;
+       normals[k+1] = ry*inverseLength;
+       normals[k+2] = rz*inverseLength;
+     }
+     position.needsUpdate = true;
+     normal.needsUpdate = true;
+   }
+ };
  return group;
 }
 export function disposeMDL(group){group.traverse(o=>o.geometry?.dispose());for(const m of group.userData.materials||[]){m?.map?.dispose();m?.dispose();}}

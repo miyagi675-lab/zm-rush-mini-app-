@@ -225,6 +225,11 @@ try {
       await loadOk(page);
       assert.equal(await page.locator('#motion').inputValue(), 'walk');
       assert.equal(await page.locator('#tab-models').getAttribute('aria-selected'), 'true');
+      await page.locator('#model-search').fill('Скирк');
+      await page.locator('[data-model-id="p_skirk"] .model-pick').click();
+      await loadOk(page);
+      assert.equal(await page.locator('#model-label').textContent(), 'Скирк');
+      await waitForStudioDraw(page);
       assert.deepEqual(errors, []);
     } finally {
       await context.close();
