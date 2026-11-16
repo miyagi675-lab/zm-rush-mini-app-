@@ -6,6 +6,8 @@ import {parseMDL, disposeMDL} from '../mdl.js';
 import {modelAssets} from '../model-assets.js';
 import {modelGroups, modelPreview} from '../model-groups.js';
 import {modelPrices} from '../model-prices.js';
+import {weapons} from '../weapon-catalog.js';
+import {prepareWeapon} from '../weapon-browser.js';
 
 const site = new URL('../', import.meta.url);
 const modelPath = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*\.mdl$/;
@@ -23,13 +25,14 @@ function validateCatalog(items, category) {
   return ids;
 }
 
-async function validateMdl(path, packed) {
+async function validateMdl(path, packed, weapon) {
   if (checkedFiles.has(path)) return;
   const bytes = await readFile(new URL('assets/' + path, site));
   const data = packed ? gunzipSync(bytes) : bytes;
   const buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-  const model = parseMDL(buffer, null, 1);
+  const model = parseMDL(buffer, null, weapon ? 0 : 1);
   try {
+    if (weapon) prepareWeapon(model, weapon);
     assert(model.userData.triangles > 0, path + ': empty geometry');
     for (const {geometry} of model.userData.meshes) {
       for (const name of ['position', 'normal', 'uv']) {
@@ -42,14 +45,14 @@ async function validateMdl(path, packed) {
   checkedFiles.add(path);
 }
 
-async function validateItem(asset, preview) {
+async function validateItem(asset, preview, weapon) {
   assert.match(asset, modelPath, 'Invalid model path ' + asset);
   const encoded = modelAssets[asset] || asset + '.gz';
   assert(encoded.endsWith('.gz') && modelPath.test(encoded.slice(0, -3)), 'Invalid gzip path ' + encoded);
   try {
-    await validateMdl(encoded, true);
+    await validateMdl(encoded, true, weapon);
     // Old WebViews can use the uncompressed path where the loader supports it.
-    if (!asset.startsWith('players-v1/')) await validateMdl(asset, false);
+    if (!weapon && !asset.startsWith('players-v1/')) await validateMdl(asset, false);
     const image = await readFile(new URL(preview, site));
     assert(image.length > 12 && image.toString('ascii', 0, 4) === 'RIFF'
       && image.toString('ascii', 8, 12) === 'WEBP', preview + ': invalid WebP');
@@ -59,6 +62,7 @@ async function validateItem(asset, preview) {
 }
 
 validateCatalog(entries, 'Hats');
+validateCatalog(weapons, 'Weapons');
 const modelIds = validateCatalog(playerModels, 'Models');
 for (const group of modelGroups) {
   for (const id of group.models) {
@@ -76,6 +80,10 @@ for (const item of entries) {
 for (const model of playerModels) {
   await validateItem(model.file, modelPreview(model.id));
 }
+for (const weapon of weapons) {
+  const base = 'weapons-v1/' + weapon.id;
+  await validateItem(base + '.mdl', 'assets/' + base + '.webp', weapon);
+}
 
 console.log('Checked ' + entries.length + ' hats, ' + playerModels.length + ' models, '
-  + Object.keys(modelPrices).length + ' prices and ' + checkedFiles.size + ' MDL files.');
+  + weapons.length + ' weapons, ' + Object.keys(modelPrices).length + ' prices and ' + checkedFiles.size + ' MDL files.');

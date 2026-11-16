@@ -1,13 +1,15 @@
 import {setupPurchase} from './purchase.js?v=5';
-import {english} from './language.js?v=14';
+import {english} from './language.js?v=15';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=6';
 import {entries,playerModels} from './catalog.js?v=11';
-import {loadModel as load,prefetchModel} from './asset-loader.js?v=4';
-import {setupModelBrowser} from './model-browser.js?v=7';
+import {loadModel as load,prefetchModel} from './asset-loader.js?v=5';
+import {setupModelBrowser} from './model-browser.js?v=8';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPriceLabel, modelPrices} from './model-prices.js?v=2';
+import {fitWeapon, prepareWeapon, setupWeaponBrowser} from './weapon-browser.js?v=1';
+import {weapons} from './weapon-catalog.js?v=1';
 
 const $=id=>document.getElementById(id);
 const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГОЕ'};
@@ -28,6 +30,8 @@ let sceneAvailable = false;
 let selectionBusy = false;
 let retryPlayerId = null;
 let restoreSavedLook = true;
+let weapon = null;
+let equippedWeapon = null;
 const telegram=window.Telegram?.WebApp;
 try {
   telegram?.ready();
@@ -49,6 +53,7 @@ const purchase = setupPurchase(() => {
   return [
     {id: player.id, name: player.name, type: 'model', price},
     current && {id: current.id, name: current.name, type: 'hat', price: null},
+    equippedWeapon && {...equippedWeapon, type: 'weapon', price: null},
   ];
 }, () => selectionBusy || !ready);
 function syncSelection(){for(const card of $('items').children){const selected=card.dataset.id===current?.id;card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
@@ -94,6 +99,7 @@ function setBusy(value) {
   $('player-model').disabled = value;
   for (const pick of $('items').querySelectorAll('.item-pick')) pick.disabled = !ready;
   modelBrowser?.setBusy(value);
+  syncWeapons(equippedWeapon, value || !ready);
   purchase.refresh();
 }
 function beginLoading(message) {
@@ -120,9 +126,45 @@ async function selectLook(entry,nextBody={},writeSlot=true){
   refreshSlots();syncSelection();purchase.refresh(entry && writeSlot ? 'hat' : undefined);toast('');performance.measure('zm-rush:accessory-ready',{start:started});try{telegram?.HapticFeedback?.selectionChanged();}catch{}
  }catch(e){console.error(e);toast(e.message+' — попробуйте ещё раз.');}finally{if(token===ticket){$('loading').hidden=true;setBusy(false);}}
 }
+async function selectWeapon(entry, purchaseWeapon = true) {
+  if (!ready || selectionBusy) return;
+  const token = ++ticket;
+  const label = entry ? 'Примеряем ' + entry.name + '…' : 'Снимаем оружие…';
+  beginLoading(label);
+  try {
+    let next = null;
+    if (entry) {
+      const data = await load('weapons-v1/' + entry.id + '.mdl', {
+        onProgress: progress => { if (token === ticket) progressFor(label)(progress); },
+      });
+      if (token !== ticket) return;
+      next = prepareWeapon(parseMDL(data), entry);
+    }
+    if (weapon) {
+      rig.remove(weapon);
+      disposeMDL(weapon);
+    }
+    weapon = next;
+    equippedWeapon = entry;
+    if (weapon) {
+      fitWeapon(weapon, ct, modelHeight);
+      rig.add(weapon);
+    }
+    purchase.refresh(entry && purchaseWeapon ? 'weapon' : undefined);
+    toast('');
+  } catch (error) {
+    console.error(error);
+    toast('Не удалось загрузить оружие. Попробуйте ещё раз.');
+  } finally {
+    if (token === ticket) {
+      $('loading').hidden = true;
+      setBusy(false);
+    }
+  }
+}
 function chooseSlot(key){if(!ready)return;activeSlot=key;refreshSlots();const look=slots[key],entry=look?entries.find(e=>e.id===look.id):null;selectLook(entry,look?.body||{},false);}
 function setMotion(value){motion=value;animationTime=0;animationPlaying=value!=='static';$('pause').disabled=!ready||selectionBusy||value==='static';$('pause').setAttribute('aria-pressed',String(!animationPlaying));$('pause').textContent=animationPlaying?'Пауза':'Продолжить';}
-function updateAnimation(delta){if(!ready||!ct?.userData.updatePose)return;if(animationPlaying)animationTime+=delta*animationSpeed;const wanted=motion==='idle1'?'idle1':motion;const sequence=motion==='static'?0:(ct.userData.sequences.find(s=>s.name.trim().toLowerCase()===wanted)?.index||1);ct.userData.updatePose(sequence,animationTime);hat?.userData.updatePose?.(sequence,animationTime,ct.userData.bones);}
+function updateAnimation(delta){if(!ready||!ct?.userData.updatePose)return;if(animationPlaying)animationTime+=delta*animationSpeed;const wanted=motion==='idle1'?'idle1':motion;const sequence=motion==='static'?0:(ct.userData.sequences.find(s=>s.name.trim().toLowerCase()===wanted)?.index||1);ct.userData.updatePose(sequence,animationTime);hat?.userData.updatePose?.(sequence,animationTime,ct.userData.bones);if(weapon)fitWeapon(weapon,ct,modelHeight);}
 function startPreviewLoop(viewport) {
   const canObserve = typeof IntersectionObserver === 'function';
   let inView = !canObserve;
@@ -180,6 +222,7 @@ async function choosePlayer(id,initial=false){
   rig.position.y=0;rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(ct);rig.position.y=-bounds.min.y;rig.updateMatrixWorld(true);
   bounds.setFromObject(ct);modelHeight=bounds.max.y;const head=ct.userData.bones.get('Bip01 Head');if(head)modelHead.setFromMatrixPosition(head).applyMatrix4(rig.matrixWorld);else bounds.getCenter(modelHead).setY(modelHeight*.85);
   animationTime=0;ready=true;frame(isClose());$('player-model').value=player.id;$('model-label').textContent=player.name;
+  if (weapon) fitWeapon(weapon, ct, modelHeight);
   const price=modelPriceLabel(player.id),priceLabel=$('model-price');
   priceLabel.textContent=price;
   priceLabel.hidden=!price;
@@ -211,6 +254,8 @@ async function choosePlayer(id,initial=false){
   const saved = readJSON('zm-rush-look', null);
   const entry = saved?.id && entries.find(hat => hat.id === saved.id);
   if (entry) await selectLook(entry, saved.body || {}, false);
+  const savedWeapon = weapons.find(item => item.id === saved?.weaponId);
+  if (savedWeapon) await selectWeapon(savedWeapon, false);
  }
  return true;
 }
@@ -222,7 +267,7 @@ $('search').oninput=renderCatalog;document.querySelectorAll('[data-filter]').for
 $('full').onclick=()=>frame(false);$('head').onclick=()=>frame(true);$('remove').onclick=()=>selectLook(null,{},true);$('rotate').onclick=()=>{if(!sceneAvailable)return;controls.autoRotate=!controls.autoRotate;$('rotate').setAttribute('aria-pressed',String(controls.autoRotate));};
 $('motion').onchange=e=>setMotion(e.target.value);$('speed').onchange=e=>animationSpeed=Number(e.target.value);$('pause').onclick=()=>{animationPlaying=!animationPlaying;$('pause').setAttribute('aria-pressed',String(!animationPlaying));$('pause').textContent=animationPlaying?'Пауза':'Продолжить';};
 $('slot-a').onclick=()=>chooseSlot('a');$('slot-b').onclick=()=>chooseSlot('b');
-$('save').onclick=()=>{try{localStorage.setItem('zm-rush-look',JSON.stringify({id:current?.id||null,body}));toast('Образ сохранён на этом устройстве.');}catch{toast('Не удалось сохранить образ.');}};
+$('save').onclick=()=>{try{localStorage.setItem('zm-rush-look',JSON.stringify({id:current?.id||null,body,weaponId:equippedWeapon?.id||null}));toast('Образ сохранён на этом устройстве.');}catch{toast('Не удалось сохранить образ.');}};
 $('snapshot').onclick=snapshot;$('close-photo').onclick=()=>$('photo-dialog').close();$('photo-dialog').addEventListener('click',e=>{if(e.target===$('photo-dialog'))$('photo-dialog').close();});
 document.addEventListener('keydown',e=>{
  if(e.key!=='/'||['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName))return;
@@ -233,6 +278,7 @@ const playerOptions=document.createDocumentFragment();for(const model of playerM
 document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.length);$('player-model').value=player.id;
 refreshSlots();syncFilters();renderCatalog();
 modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,isReady:()=>sceneAvailable&&Boolean(ct),onChoose:choosePlayer});
+const syncWeapons = setupWeaponBrowser(selectWeapon);
 setBusy(false);
 let stopPreviewLoop;
 try{

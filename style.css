@@ -102,17 +102,13 @@
   min-width: 0;
 }
 
-.weapons-panel {
-  display: grid;
-  place-items: center;
-  min-height: 200px;
+#weapon-items img {
+  object-fit: contain;
 }
 
-.weapons-soon {
-  margin: 0;
-  color: rgb(194 198 194 / 55%);
-  font-size: clamp(28px, 5vw, 52px);
-  font-weight: 650;
+#weapon-items .item-name {
+  overflow-wrap: anywhere;
+  padding-bottom: 8px;
 }
 
 .details {

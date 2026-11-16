@@ -1,6 +1,15 @@
 import {playerNamePairs} from './player-catalog.js?v=7';
 const pairs=`Маленькие скины|Small skins
 Оружие|Weapons
+Поиск оружия|Search weapons
+Найти оружие|Find a weapon
+Категории оружия|Weapon categories
+Винтовки|Rifles
+Пистолеты|Pistols
+Ножи|Knives
+Снять оружие|Unequip weapon
+Оружие не найдено.|No weapons found.
+Не удалось загрузить оружие. Попробуйте ещё раз.|Could not load the weapon. Try again.
 Шапка|Hat
 ТОВАР ДЛЯ ПОКУПКИ|ITEM TO BUY
 Товар для покупки|Item to buy

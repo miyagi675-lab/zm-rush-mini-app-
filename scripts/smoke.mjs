@@ -182,7 +182,13 @@ try {
       assert(await page.evaluate(() => window.swipesDisabled));
       await page.locator('#tab-weapons').click();
       await page.locator('#weapons-panel').waitFor({state: 'visible'});
-      assert.equal((await page.locator('#weapons-panel').textContent()).trim(), 'Soon');
+      const weapon = page.locator('[data-weapon-id="ak-47-dollar"] .item-pick');
+      await page.locator('#weapon-search').fill('Dollar');
+      assert.equal(await page.locator('#weapon-items article').count(), 1);
+      await weapon.click();
+      await loadOk(page);
+      assert.equal(await weapon.getAttribute('aria-pressed'), 'true');
+      await assertPurchase(page, 'AK-47 | Dollar', /^Цена по запросу$/);
       await page.locator('#tab-weapons').press('Home');
       assert.equal(await page.locator('#tab-hats').getAttribute('aria-selected'), 'true');
       await assertOffscreenStudio(page);
@@ -219,6 +225,19 @@ try {
       await assertPurchase(page, 'Добби', /^3 000 ₽ \/ месяц$/);
       await page.locator('[data-product-type="hat"]').click();
       await assertPurchase(page, hat, /^Цена по запросу$/);
+      await page.locator('#tab-weapons').click();
+      await page.locator('#weapon-filters [data-category="knife"]').click();
+      const knife = page.locator('[data-weapon-id="butterfly-knife-doppler-sapphire"] .item-pick');
+      await knife.click();
+      await loadOk(page);
+      await assertPurchase(page, 'Butterfly Knife | Doppler Sapphire', /^Цена по запросу$/);
+      await page.locator('#open-models').click();
+      await page.locator('#model-items [data-model-id="p_small_sonic"] .model-pick').click();
+      await loadOk(page);
+      assert.equal(await knife.getAttribute('aria-pressed'), 'true');
+      await page.locator('#tab-weapons').click();
+      await page.locator('#remove-weapon').click();
+      assert.equal(await knife.getAttribute('aria-pressed'), 'false');
       assert.deepEqual(errors, []);
     } finally {
       await context.close();

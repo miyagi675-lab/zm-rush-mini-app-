@@ -25,6 +25,7 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
   if(resetScroll){
    if (tab==='models') list.scrollTop=0;
    if (tab==='hats') $('items').scrollTop=0;
+   if (tab==='weapons') $('weapon-items').scrollTop=0;
    if(matchMedia('(max-width:800px)').matches){
     const catalogTop=document.querySelector('.catalog').getBoundingClientRect().top+window.scrollY;
     const previewHeight=document.querySelector('.studio').getBoundingClientRect().height;

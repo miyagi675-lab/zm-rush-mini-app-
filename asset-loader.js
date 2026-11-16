@@ -18,7 +18,7 @@ export function loadModel(file,{priority='high',onProgress}={}){
  return task.promise.finally(()=>{if(onProgress)task.listeners.delete(onProgress);});
 }
 async function read(file,priority,progress){
- const packed=typeof DecompressionStream!=='undefined'||file.startsWith('players-v1/');
+ const packed=typeof DecompressionStream!=='undefined'||file.startsWith('players-v1/')||file.startsWith('weapons-v1/');
  const url=new URL('assets/'+(packed?(modelAssets[file]||file+'.gz'):file),import.meta.url).href;
  const cache=await cacheStore();
  let cached;try{cached=await cache?.match(url);}catch{}
