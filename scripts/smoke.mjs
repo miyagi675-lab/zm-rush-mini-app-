@@ -178,6 +178,8 @@ try {
       outage = false;
       await retry.click();
       await loadOk(page);
+      assert.equal(await page.locator('#motion').inputValue(), 'walk');
+      assert.equal(await page.locator('#pause').getAttribute('aria-pressed'), 'false');
       assert.equal(await retry.isVisible(), false);
       assert(await page.evaluate(() => window.swipesDisabled));
       await page.locator('#tab-weapons').click();
@@ -185,6 +187,9 @@ try {
       const weapon = page.locator('[data-weapon-id="ak-47-dollar"] .item-pick');
       await page.locator('#weapon-search').fill('Dollar');
       assert.equal(await page.locator('#weapon-items article').count(), 1);
+      const thumbnail = weapon.locator('img');
+      await page.waitForFunction(() => document.querySelector('#weapon-items img')?.naturalWidth > 0);
+      assert.match(await thumbnail.getAttribute('src'), /ak-47-dollar\.webp\?v=2$/);
       await weapon.click();
       await loadOk(page);
       assert.equal(await weapon.getAttribute('aria-pressed'), 'true');

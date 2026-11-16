@@ -76,7 +76,7 @@ export function setupWeaponBrowser(onChoose) {
       image.height = 180;
       image.loading = 'lazy';
       image.decoding = 'async';
-      image.dataset.preview = 'assets/weapons-v1/' + entry.id + '.webp';
+      image.dataset.preview = 'assets/weapons-v1/' + entry.id + '.webp' + (entry.category === 'knife' ? '' : '?v=2');
       const name = document.createElement('span');
       name.className = 'item-name';
       name.textContent = entry.name;
