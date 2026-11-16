@@ -178,7 +178,7 @@ try {
       outage = false;
       await retry.click();
       await loadOk(page);
-      assert.equal(await page.locator('#motion').inputValue(), 'walk');
+      assert.equal(await page.locator('#motion').inputValue(), 'run');
       assert.equal(await page.locator('#pause').getAttribute('aria-pressed'), 'false');
       assert.equal(await retry.isVisible(), false);
       assert(await page.evaluate(() => window.swipesDisabled));

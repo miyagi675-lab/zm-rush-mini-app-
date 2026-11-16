@@ -25,7 +25,7 @@ const favorites=new Set(readJSON('zm-rush-favorites',[]));
 const slots=readJSON('zm-rush-slots',{a:null,b:null});
 let ct,hat,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filter='all',ready=false,modelBrowser=null;
 let player=playerModels.find(m=>m.id===readJSON('zm-rush-player','gign'))||playerModels[0],modelHeight=62,modelHead=new T.Vector3(0,56,0),playerTicket=0;
-let activeSlot='a',animationTime=0,animationSpeed=1,animationPlaying=true,motion='walk',cameraView='angle';
+let activeSlot='a',animationTime=0,animationSpeed=1,animationPlaying=true,motion=$('motion').querySelector('option[selected]').value,cameraView='angle';
 let sceneAvailable = false;
 let selectionBusy = false;
 let retryPlayerId = null;
