@@ -5,7 +5,7 @@ import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=6';
 import {entries,playerModels} from './catalog.js?v=11';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
-import {setupModelBrowser} from './model-browser.js?v=8';
+import {setupModelBrowser} from './model-browser.js?v=9';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPriceLabel, modelPrices} from './model-prices.js?v=2';
 import {fitWeapon, prepareWeapon, setupWeaponBrowser} from './weapon-browser.js?v=2';
@@ -96,7 +96,6 @@ function setBusy(value) {
   $('save').disabled = value || !ready;
   $('snapshot').disabled = value || !ready;
   $('pause').disabled = value || !ready || motion === 'static';
-  $('player-model').disabled = value;
   for (const pick of $('items').querySelectorAll('.item-pick')) pick.disabled = !ready;
   modelBrowser?.setBusy(value);
   syncWeapons(equippedWeapon, value || !ready);
@@ -221,7 +220,7 @@ async function choosePlayer(id,initial=false){
   ct=next;hat=nextHat;player=nextPlayer;ct.userData.updatePose(1,0);rig.add(ct);if(hat){hat.userData.updatePose(1,0,ct.userData.bones);rig.add(hat);}trimHats();trimPlayers();
   rig.position.y=0;rig.updateMatrixWorld(true);let bounds=new T.Box3().setFromObject(ct);rig.position.y=-bounds.min.y;rig.updateMatrixWorld(true);
   bounds.setFromObject(ct);modelHeight=bounds.max.y;const head=ct.userData.bones.get('Bip01 Head');if(head)modelHead.setFromMatrixPosition(head).applyMatrix4(rig.matrixWorld);else bounds.getCenter(modelHead).setY(modelHeight*.85);
-  animationTime=0;ready=true;frame(isClose());$('player-model').value=player.id;$('model-label').textContent=player.name;
+  animationTime=0;ready=true;frame(isClose());$('model-label').textContent=player.name;
   updateAnimation(0);
   const price=modelPriceLabel(player.id),priceLabel=$('model-price');
   priceLabel.textContent=price;
@@ -236,7 +235,6 @@ async function choosePlayer(id,initial=false){
  } catch (error) {
   if (sceneAvailable && token === playerTicket) {
     ready = Boolean(ct);
-    $('player-model').value = player.id;
     retryPlayerId = nextPlayer.id;
     $('loading-message').textContent = 'Не удалось загрузить модель. Повторите загрузку или выберите другую модель.';
     $('retry-model').hidden = false;
@@ -262,7 +260,6 @@ async function choosePlayer(id,initial=false){
 $('retry-model').onclick = () => {
   if (retryPlayerId !== null) return choosePlayer(retryPlayerId);
 };
-$('player-model').onchange=e=>choosePlayer(e.target.value);
 $('search').oninput=renderCatalog;document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;syncFilters();renderCatalog();});document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
 $('full').onclick=()=>frame(false);$('head').onclick=()=>frame(true);$('remove').onclick=()=>selectLook(null,{},true);$('rotate').onclick=()=>{if(!sceneAvailable)return;controls.autoRotate=!controls.autoRotate;$('rotate').setAttribute('aria-pressed',String(controls.autoRotate));};
 $('motion').onchange=e=>setMotion(e.target.value);$('speed').onchange=e=>animationSpeed=Number(e.target.value);$('pause').onclick=()=>{animationPlaying=!animationPlaying;$('pause').setAttribute('aria-pressed',String(!animationPlaying));$('pause').textContent=animationPlaying?'Пауза':'Продолжить';};
@@ -275,8 +272,7 @@ document.addEventListener('keydown',e=>{
  const search = document.querySelector('.catalog-panel:not([hidden]) input[type="search"]');
  if(search){e.preventDefault();search.focus();}
 });
-const playerOptions=document.createDocumentFragment();for(const model of playerModels){const option=document.createElement('option');option.value=model.id;option.textContent=model.name;playerOptions.append(option);}$('player-model').replaceChildren(playerOptions);
-document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.length);$('player-model').value=player.id;
+document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.length);
 refreshSlots();syncFilters();renderCatalog();
 modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,isReady:()=>sceneAvailable&&Boolean(ct),onChoose:choosePlayer});
 const syncWeapons = setupWeaponBrowser(selectWeapon);

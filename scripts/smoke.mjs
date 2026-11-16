@@ -106,6 +106,14 @@ async function loadOk(page) {
   assert.equal(await page.locator('#viewport canvas').count(), 1);
 }
 
+async function assertCompactPreview(page) {
+  assert.equal(await page.locator('main > .workspace:first-child').count(), 1);
+  assert.equal(await page.locator('#open-models, #player-model').count(), 0);
+  const gap = await page.evaluate(() => document.querySelector('.studio').getBoundingClientRect().top
+    - document.querySelector('header').getBoundingClientRect().bottom);
+  assert(gap >= 0 && gap <= 16, 'Live Preview must begin just below the header');
+}
+
 async function waitForStudioDraw(page) {
   const previous = await page.evaluate(() => window.studioDraws);
   await page.waitForFunction(draws => window.studioDraws > draws, previous);
@@ -170,9 +178,10 @@ try {
         await route.fulfill({status: 503, body: 'Simulated temporary outage'});
       });
       await page.goto(origin + mount);
+      await assertCompactPreview(page);
       const retry = await waitForRetry(page, errors, requestFailures);
       assert(failures > 0);
-      await page.locator('#open-models').click();
+      await page.locator('#tab-models').click();
       await page.locator(models).first().waitFor({state: 'visible'});
       assert(await page.locator(models).first().isEnabled(), 'Model picker must remain available after an error');
       outage = false;
@@ -209,8 +218,9 @@ try {
         status: 503, body: 'Simulated unavailable model',
       }));
       await page.goto(origin + mount);
+      await assertCompactPreview(page);
       await waitForRetry(page, errors, requestFailures);
-      await page.locator('#open-models').click();
+      await page.locator('#tab-models').click();
       await page.locator('#model-items [data-model-id="dobby"] .model-pick').click();
       await loadOk(page);
       await assertPurchase(page, 'Добби', /^3 000 ₽ \/ месяц$/);
@@ -236,7 +246,7 @@ try {
       await knife.click();
       await loadOk(page);
       await assertPurchase(page, 'Butterfly Knife | Doppler Sapphire', /^Цена по запросу$/);
-      await page.locator('#open-models').click();
+      await page.locator('#tab-models').click();
       await page.locator('#model-items [data-model-id="p_small_sonic"] .model-pick').click();
       await loadOk(page);
       assert.equal(await knife.getAttribute('aria-pressed'), 'true');

@@ -8,7 +8,7 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
  const savedFavorites=read('zm-rush-model-favorites',[]),savedRecent=read('zm-rush-model-recent',[]);
  const favorites=new Set((Array.isArray(savedFavorites)?savedFavorites:[]).filter(id=>byId.has(id)));
  let recent=(Array.isArray(savedRecent)?savedRecent:[]).filter(id=>byId.has(id)),category='all',busy=false,pending=null,rendered=false;
- const list=$('model-items'),search=$('model-search'),filters=$('model-filters'),opener=$('open-models');
+ const list=$('model-items'),search=$('model-search'),filters=$('model-filters');
  const loadModelPreviews = createPreviewLoader();
  const tabs = ['hats','models','weapons'];
  let activeTab = 'hats';
@@ -18,8 +18,6 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
   if (!tabs.includes(tab)) return;
   activeTab=tab;
   for(const name of tabs){const active=name===tab;$('tab-'+name).setAttribute('aria-selected',String(active));$('tab-'+name).tabIndex=active?0:-1;$(name+'-panel').hidden=!active;}
-  opener.setAttribute('aria-expanded',String(tab==='models'));
-  document.body.classList.toggle('model-catalog-open',tab==='models');
   if(tab==='models'&&!rendered)render();
   if(focus)$('tab-'+tab).focus({preventScroll:true});
   if(resetScroll){
@@ -54,7 +52,6 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
   event.preventDefault();
   showTab(tabs[target],true);
  };
- opener.onclick=()=>{showTab('models');if(!matchMedia('(max-width:800px)').matches)search.focus({preventScroll:true});};
  for(const group of [{id:'all',name:'Все'},{id:'favorites',name:'★ Избранное'},{id:'recent',name:'Недавние'},...modelGroups]){
   const el=button(group.name,()=>{category=group.id;render();});el.dataset.modelFilter=group.id;el.setAttribute('aria-pressed','false');filters.append(el);
  }
@@ -66,7 +63,6 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
    card.querySelector('.model-card-status').textContent=loading?'Загрузка…':active?'Выбрано':'Смотреть в 3D';
   }
  }
- function updateCurrent(){const model=byId.get(selectedId);if(!model)return;$('chosen-model-name').textContent=model.name;const img=$('chosen-model-preview');img.src=modelPreview(model.id);img.alt='';syncCards();}
  function render(keepScroll=false){
   const scrollTop=keepScroll===true?list.scrollTop:0;
   rendered=true;const term=search.value.trim().toLocaleLowerCase('ru');
@@ -98,8 +94,8 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
   $('model-empty-copy').textContent=category==='favorites'?'Нажми на звёздочку у понравившегося персонажа.':category==='recent'?'Выбери персонажа — он сохранится в этом списке.':'Попробуй другое имя или сбрось фильтры.';
   syncCards();
  }
- function setBusy(value){busy=value;opener.disabled=value;syncCards();}
- function setSelected(id,remember=true){if(!byId.has(id))return;selectedId=id;if(remember){recent=[id,...recent.filter(x=>x!==id)].slice(0,12);store('zm-rush-model-recent',recent);}updateCurrent();if(rendered&&category==='recent')render();}
+ function setBusy(value){busy=value;syncCards();}
+ function setSelected(id,remember=true){if(!byId.has(id))return;selectedId=id;if(remember){recent=[id,...recent.filter(x=>x!==id)].slice(0,12);store('zm-rush-model-recent',recent);}if(rendered&&category==='recent')render();else syncCards();}
  search.oninput=render;$('model-sort').onchange=render;
  $('model-reset').onclick=()=>{search.value='';category='all';render();};
  window.addEventListener('zm-rush:languagechange',()=>{if(rendered)render();});
@@ -112,6 +108,6 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
  window.addEventListener('scroll',scheduleScrollUpdate,{passive:true});window.addEventListener('resize',scheduleScrollUpdate);
  for(const grid of [$('items'),list])grid.addEventListener('scroll',scheduleScrollUpdate,{passive:true});
  topButton.onclick=()=>{for(const grid of [$('items'),list])grid.scrollTop=0;window.scrollTo({top:0,behavior:'auto'});document.querySelector('.brand').focus({preventScroll:true});updateBackToTop();};
- updateCurrent();showTab('hats',false,false);
+ showTab('hats',false,false);
  return {setBusy,setSelected,showTab};
 }
