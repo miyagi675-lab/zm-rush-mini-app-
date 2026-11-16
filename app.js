@@ -276,6 +276,9 @@ document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.len
 refreshSlots();syncFilters();renderCatalog();
 modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,isReady:()=>sceneAvailable&&Boolean(ct),onChoose:choosePlayer});
 const syncWeapons = setupWeaponBrowser(selectWeapon);
+if (new URLSearchParams(location.search).get('tab') === 'weapons') {
+  modelBrowser.showTab('weapons', false, false);
+}
 setBusy(false);
 let stopPreviewLoop;
 try{

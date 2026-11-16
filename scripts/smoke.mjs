@@ -217,7 +217,9 @@ try {
       await page.route(defaultModel, route => route.fulfill({
         status: 503, body: 'Simulated unavailable model',
       }));
-      await page.goto(origin + mount);
+      await page.goto(origin + mount + '?tab=weapons');
+      await page.locator('#weapons-panel').waitFor({state: 'visible'});
+      assert.equal(await page.locator('#tab-weapons').getAttribute('aria-selected'), 'true');
       await assertCompactPreview(page);
       await waitForRetry(page, errors, requestFailures);
       await page.locator('#tab-models').click();
