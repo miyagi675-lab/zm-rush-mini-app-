@@ -206,6 +206,19 @@ try {
       await page.locator('#tab-weapons').press('Home');
       assert.equal(await page.locator('#tab-hats').getAttribute('aria-selected'), 'true');
       await assertOffscreenStudio(page);
+      await page.locator('#motion').selectOption('walk');
+      await page.locator('#tab-hats').press('ArrowRight');
+      await page.reload();
+      await loadOk(page);
+      assert.equal(await page.locator('#motion').inputValue(), 'walk');
+      assert.equal(await page.locator('#tab-models').getAttribute('aria-selected'), 'true');
+      await page.goto(origin + mount + '?tab=weapons');
+      await loadOk(page);
+      assert.equal(await page.locator('#tab-weapons').getAttribute('aria-selected'), 'true');
+      await page.goto(origin + mount);
+      await loadOk(page);
+      assert.equal(await page.locator('#motion').inputValue(), 'walk');
+      assert.equal(await page.locator('#tab-models').getAttribute('aria-selected'), 'true');
       assert.deepEqual(errors, []);
     } finally {
       await context.close();

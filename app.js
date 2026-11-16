@@ -5,7 +5,7 @@ import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL} from './mdl.js?v=6';
 import {entries,playerModels} from './catalog.js?v=11';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
-import {setupModelBrowser} from './model-browser.js?v=9';
+import {setupModelBrowser} from './model-browser.js?v=10';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPriceLabel, modelPrices} from './model-prices.js?v=2';
 import {fitWeapon, prepareWeapon, setupWeaponBrowser} from './weapon-browser.js?v=2';
@@ -25,7 +25,12 @@ const favorites=new Set(readJSON('zm-rush-favorites',[]));
 const slots=readJSON('zm-rush-slots',{a:null,b:null});
 let ct,hat,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filter='all',ready=false,modelBrowser=null;
 let player=playerModels.find(m=>m.id===readJSON('zm-rush-player','gign'))||playerModels[0],modelHeight=62,modelHead=new T.Vector3(0,56,0),playerTicket=0;
-let activeSlot='a',animationTime=0,animationSpeed=1,animationPlaying=true,motion=$('motion').querySelector('option[selected]').value,cameraView='angle';
+const motionSelect = $('motion');
+const storedMotion = readJSON('zm-rush-motion', null);
+let motion = [...motionSelect.options].some(option => option.value === storedMotion)
+  ? storedMotion
+  : motionSelect.querySelector('option[selected]').value;
+let activeSlot='a',animationTime=0,animationSpeed=1,animationPlaying=true,cameraView='angle';
 let sceneAvailable = false;
 let selectionBusy = false;
 let retryPlayerId = null;
@@ -262,8 +267,13 @@ $('retry-model').onclick = () => {
 };
 $('search').oninput=renderCatalog;document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;syncFilters();renderCatalog();});document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
 $('full').onclick=()=>frame(false);$('head').onclick=()=>frame(true);$('remove').onclick=()=>selectLook(null,{},true);$('rotate').onclick=()=>{if(!sceneAvailable)return;controls.autoRotate=!controls.autoRotate;$('rotate').setAttribute('aria-pressed',String(controls.autoRotate));};
-$('motion').onchange=e=>setMotion(e.target.value);$('speed').onchange=e=>animationSpeed=Number(e.target.value);$('pause').onclick=()=>{animationPlaying=!animationPlaying;$('pause').setAttribute('aria-pressed',String(!animationPlaying));$('pause').textContent=animationPlaying?'Пауза':'Продолжить';};
-$('motion').value = motion;
+motionSelect.onchange = () => {
+  setMotion(motionSelect.value);
+  try { localStorage.setItem('zm-rush-motion', JSON.stringify(motion)); } catch {}
+};
+$('speed').onchange=e=>animationSpeed=Number(e.target.value);$('pause').onclick=()=>{animationPlaying=!animationPlaying;$('pause').setAttribute('aria-pressed',String(!animationPlaying));$('pause').textContent=animationPlaying?'Пауза':'Продолжить';};
+motionSelect.value = motion;
+setMotion(motion);
 $('slot-a').onclick=()=>chooseSlot('a');$('slot-b').onclick=()=>chooseSlot('b');
 $('save').onclick=()=>{try{localStorage.setItem('zm-rush-look',JSON.stringify({id:current?.id||null,body,weaponId:equippedWeapon?.id||null}));toast('Образ сохранён на этом устройстве.');}catch{toast('Не удалось сохранить образ.');}};
 $('snapshot').onclick=snapshot;$('close-photo').onclick=()=>$('photo-dialog').close();$('photo-dialog').addEventListener('click',e=>{if(e.target===$('photo-dialog'))$('photo-dialog').close();});
@@ -274,11 +284,9 @@ document.addEventListener('keydown',e=>{
 });
 document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.length);
 refreshSlots();syncFilters();renderCatalog();
-modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,isReady:()=>sceneAvailable&&Boolean(ct),onChoose:choosePlayer});
+const initialTab = new URLSearchParams(location.search).get('tab') === 'weapons' ? 'weapons' : null;
+modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,isReady:()=>sceneAvailable&&Boolean(ct),onChoose:choosePlayer,initialTab});
 const syncWeapons = setupWeaponBrowser(selectWeapon);
-if (new URLSearchParams(location.search).get('tab') === 'weapons') {
-  modelBrowser.showTab('weapons', false, false);
-}
 setBusy(false);
 let stopPreviewLoop;
 try{

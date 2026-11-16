@@ -1,7 +1,7 @@
 import {modelGroups,modelGroupById,modelPreview} from './model-groups.js?v=2';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 
-export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()=>true}){
+export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()=>true,initialTab=null}){
  const $=id=>document.getElementById(id),byId=new Map(models.map(m=>[m.id,m]));
  const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))||fallback;}catch{return fallback;}};
  const store=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
@@ -38,7 +38,11 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
  $('model-total').textContent=models.length;
  $('tab-model-count').textContent=models.length;
  $('tab-hat-count').textContent=$('count').textContent.split('/').pop()?.trim()||'86';
- for (const tab of tabs) $('tab-'+tab).onclick=()=>showTab(tab);
+ function selectTab(tab,focus=false){
+  showTab(tab,focus);
+  store('zm-rush-catalog-tab',tab);
+ }
+ for (const tab of tabs) $('tab-'+tab).onclick=()=>selectTab(tab);
  $('catalog-tabs').onkeydown=event=>{
   const index=tabs.indexOf(activeTab);
   let target;
@@ -50,7 +54,7 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
    default:return;
   }
   event.preventDefault();
-  showTab(tabs[target],true);
+  selectTab(tabs[target],true);
  };
  for(const group of [{id:'all',name:'Все'},{id:'favorites',name:'★ Избранное'},{id:'recent',name:'Недавние'},...modelGroups]){
   const el=button(group.name,()=>{category=group.id;render();});el.dataset.modelFilter=group.id;el.setAttribute('aria-pressed','false');filters.append(el);
@@ -108,6 +112,7 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
  window.addEventListener('scroll',scheduleScrollUpdate,{passive:true});window.addEventListener('resize',scheduleScrollUpdate);
  for(const grid of [$('items'),list])grid.addEventListener('scroll',scheduleScrollUpdate,{passive:true});
  topButton.onclick=()=>{for(const grid of [$('items'),list])grid.scrollTop=0;window.scrollTo({top:0,behavior:'auto'});document.querySelector('.brand').focus({preventScroll:true});updateBackToTop();};
- showTab('hats',false,false);
- return {setBusy,setSelected,showTab};
+ const savedTab = read('zm-rush-catalog-tab','hats');
+ showTab(initialTab ?? (tabs.includes(savedTab) ? savedTab : 'hats'),false,false);
+ return {setBusy,setSelected};
 }
