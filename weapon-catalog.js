@@ -27,23 +27,43 @@ export const weapons = [
   {
     "id": "bayonet-white",
     "name": "Bayonet | White",
-    "category": "knife"
+    "category": "knife",
+    "grip": [
+      11.6,
+      -6.05,
+      36.8
+    ]
   },
   {
     "id": "butterfly-knife-doppler-sapphire",
     "name": "Butterfly Knife | Doppler Sapphire",
     "category": "knife",
-    "sourceHand": "v_weapon.Bip01_R_Hand"
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      12.53,
+      -6.88,
+      -4.81
+    ]
   },
   {
     "id": "butterfly-knife-fade",
     "name": "Butterfly Knife | Fade",
-    "category": "knife"
+    "category": "knife",
+    "grip": [
+      10.6,
+      -5.92,
+      35.9
+    ]
   },
   {
     "id": "butterfly-knife",
     "name": "Butterfly Knife",
-    "category": "knife"
+    "category": "knife",
+    "grip": [
+      12.2,
+      -0.03,
+      37.2
+    ]
   },
   {
     "id": "desert-eagle-blaze",
@@ -83,7 +103,12 @@ export const weapons = [
   {
     "id": "knife-dragon-lore",
     "name": "Knife | Dragon Lore",
-    "category": "knife"
+    "category": "knife",
+    "grip": [
+      11.9,
+      -6.07,
+      37.3
+    ]
   },
   {
     "id": "m4a1-dragon-lore",
@@ -103,17 +128,32 @@ export const weapons = [
   {
     "id": "karambit-emerald",
     "name": "Karambit | Emerald",
-    "category": "knife"
+    "category": "knife",
+    "grip": [
+      13.7,
+      -6.11,
+      37.75
+    ]
   },
   {
     "id": "karambit-sapphire",
     "name": "Karambit | Sapphire",
-    "category": "knife"
+    "category": "knife",
+    "grip": [
+      13.7,
+      -6.11,
+      37.75
+    ]
   },
   {
     "id": "karambit-autotronic",
     "name": "Karambit | Autotronic",
-    "category": "knife"
+    "category": "knife",
+    "grip": [
+      12,
+      -6.05,
+      36.95
+    ]
   },
   {
     "id": "m4a1-golden-basilisk",
@@ -178,12 +218,22 @@ export const weapons = [
   {
     "id": "m9-bayonet-chang",
     "name": "M9 Bayonet | Chang",
-    "category": "knife"
+    "category": "knife",
+    "grip": [
+      11.6,
+      -6.05,
+      36.8
+    ]
   },
   {
     "id": "m9-bayonet-laser-cutter",
     "name": "M9 Bayonet | Laser Cutter",
-    "category": "knife"
+    "category": "knife",
+    "grip": [
+      11.6,
+      -6.05,
+      36.8
+    ]
   },
   {
     "id": "desert-eagle-printstream",

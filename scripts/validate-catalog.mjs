@@ -8,6 +8,7 @@ import {modelGroups, modelPreview} from '../model-groups.js';
 import {modelPrices} from '../model-prices.js';
 import {weapons} from '../weapon-catalog.js';
 import {prepareWeapon} from '../weapon-browser.js';
+import {Triangle, Vector3} from '../vendor/three.module.js';
 
 const site = new URL('../', import.meta.url);
 const modelPath = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*\.mdl$/;
@@ -32,7 +33,28 @@ async function validateMdl(path, packed, weapon) {
   const buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
   const model = parseMDL(buffer, null, weapon ? 0 : 1);
   try {
-    if (weapon) prepareWeapon(model, weapon);
+    if (weapon) {
+      if (weapon.category === 'knife') {
+        assert(weapon.grip?.length === 3 && weapon.grip.every(Number.isFinite), path + ': missing knife grip');
+      }
+      prepareWeapon(model, weapon);
+      if (weapon.category === 'knife') {
+        const triangle = new Triangle();
+        const origin = new Vector3();
+        const nearest = new Vector3();
+        const touchesGrip = model.children.some(({geometry}) => {
+          const vertices = geometry.attributes.position;
+          for (let i = 0; i < vertices.count; i += 3) {
+            triangle.a.fromBufferAttribute(vertices, i);
+            triangle.b.fromBufferAttribute(vertices, i + 1);
+            triangle.c.fromBufferAttribute(vertices, i + 2);
+            if (triangle.getArea() > 1e-9 && triangle.closestPointToPoint(origin, nearest).length() <= 0.5) return true;
+          }
+          return false;
+        });
+        assert(touchesGrip, path + ': knife geometry is separated from the grip');
+      }
+    }
     assert(model.userData.triangles > 0, path + ': empty geometry');
     for (const {geometry} of model.userData.meshes) {
       for (const name of ['position', 'normal', 'uv']) {
