@@ -179,6 +179,16 @@ async function addFromCard(page, card, name, count) {
   const pick = card.locator('.model-pick, .item-pick');
   assert.equal(await pick.getAttribute('aria-pressed'), 'false', 'The tested product must start unequipped');
   const button = await assertCardCartButton(card, name, false);
+  const receivesPointer = await button.evaluate(async element => {
+    // On mobile, a control in the viewport can sit behind the sticky preview
+    // or the floating scroll-to-top button. Scroll between those controls.
+    const before = element.getBoundingClientRect();
+    window.scrollBy({top: before.top + before.height / 2 - innerHeight * .72, behavior: 'instant'});
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    const {left, top, width, height} = element.getBoundingClientRect();
+    return element.contains(document.elementFromPoint(left + width / 2, top + height / 2));
+  });
+  assert(receivesPointer, 'The cart button for ' + name + ' must be reachable below the preview');
   await button.click();
   await assertCardCartButton(card, name, true);
   await assertCartCount(page, count);
