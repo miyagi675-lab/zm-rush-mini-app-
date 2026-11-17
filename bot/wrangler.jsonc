@@ -1,0 +1,10 @@
+{
+  "name": "zmrush-ze-shop",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-07",
+  "workers_dev": true,
+  "kv_namespaces": [
+    {"binding": "ZMRUSH_LANGUAGES", "id": "34c1508891824e83a5be02f8de2af00a"}
+  ],
+  "observability": {"enabled": false}
+}

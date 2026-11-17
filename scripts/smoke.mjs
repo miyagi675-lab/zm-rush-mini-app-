@@ -493,7 +493,62 @@ try {
       await context.close();
     }
   }
-  console.log('Browser smoke passed: loading recovery, Weapons tab, visibility-aware 3D, and mobile cart checkout.');
+  for (const width of [1280, 390]) {
+    const {page, context, errors} = await newPage(width, 844);
+    try {
+      await page.addInitScript(() => {
+        localStorage.setItem('zm-rush-language', 'ru');
+        localStorage.setItem('zm-rush-checkout-language', 'ru');
+      });
+      await page.route('https://telegram.org/js/telegram-web-app.js', route => route.fulfill({
+        contentType: 'text/javascript', body: 'window.Telegram={WebApp:{initData:"test-init-data",ready(){},expand(){},isVersionAtLeast(){return false},openTelegramLink(url){window.purchaseUrl=url}}};',
+      }));
+      let botLanguage = 'es';
+      await page.route('https://zmrush-ze-shop.miyagi675.workers.dev/catalog-language', route => {
+        assert.equal(route.request().method(), 'POST');
+        assert.deepEqual(route.request().postDataJSON(), {initData: 'test-init-data'});
+        return route.fulfill({contentType: 'application/json', body: JSON.stringify({language: botLanguage})});
+      });
+      await page.goto(origin + mount + '?lang=de');
+      await loadOk(page);
+      await page.waitForFunction(() => localStorage.getItem('zm-rush-checkout-language') === 'es');
+      await page.locator('#tab-models').click();
+      await page.locator('#model-search').fill('Dobby');
+      await addFromCard(page, page.locator('[data-model-id="dobby"]'), 'Добби', 1);
+      await page.locator('#tab-hats').click();
+      await page.locator('#search').fill('Bunny');
+      await addFromCard(page, page.locator('[data-id="bunny"]'), 'Заяц', 2);
+      const cart = await openCart(page, '#cart-open-top');
+      const draftText = async () => new URL(await page.locator('#cart-checkout').getAttribute('href')).searchParams.get('text');
+      const spanish = await draftText();
+      assert.match(spanish, /^¡Hola!/);
+      assert.match(spanish, /Modelo «Dobby» — \$30 \/ mes/);
+      assert.match(spanish, /Sombrero «Bunny» — \$8 \/ mes/);
+      assert.match(spanish, /\$38 \/ mes/);
+      assert.doesNotMatch(spanish, /[А-Яа-яЁё]/);
+      await page.keyboard.press('Escape');
+      for (const [language, greeting, period] of [['ru', 'Здравствуйте!', 'месяц'], ['en', 'Hello!', 'month']]) {
+        await page.locator('[data-language="' + language + '"]').click();
+        await openCart(page, '#cart-open-top');
+        const text = await draftText();
+        assert(text.startsWith(greeting));
+        assert(text.includes('$38 / ' + period));
+        if (language === 'en') assert.doesNotMatch(text, /[А-Яа-яЁё]/);
+        await page.keyboard.press('Escape');
+      }
+      // The latest language stored by the bot wins over an old catalog link and local preference.
+      botLanguage = 'fr';
+      await page.reload();
+      await loadOk(page);
+      await page.waitForFunction(() => localStorage.getItem('zm-rush-checkout-language') === 'fr');
+      await openCart(page, '#cart-open-top');
+      assert.match(await draftText(), /^Bonjour !/);
+      assert.match(await draftText(), /\$38 \/ mois/);
+      assert.equal(await cart.locator('[data-cart-item]').count(), 2);
+      assert.deepEqual(errors, []);
+    } finally {await context.close();}
+  }
+  console.log('Browser smoke passed: loading, fitting, cart checkout and bot-language synchronization on desktop and mobile.');
 } finally {
   await browser?.close();
   server.closeAllConnections();

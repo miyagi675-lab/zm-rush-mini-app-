@@ -1,4 +1,5 @@
-import {cartDraft, productKey, restoreCart, summarizeCart} from './cart.js?v=2';
+import {cartDraft, productKey, restoreCart, summarizeCart} from './cart.js?v=3';
+import {checkoutLocale} from './checkout-locales.js?v=1';
 
 const productTypes = new Map([
   ['model', 'Модель'],
@@ -47,6 +48,46 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
   let cart = loadCart();
   let cartKeys = new Set();
   let draft = null;
+  const savedLocale = key => {try {return checkoutLocale(localStorage.getItem(key));} catch {return null;}};
+  let locale = checkoutLocale(new URLSearchParams(location.search).get('lang'))
+    || savedLocale('zm-rush-checkout-language') || savedLocale('zm-rush-language')
+    || checkoutLocale(document.documentElement.lang) || 'ru';
+  let localeRevision = 0;
+  let pendingLanguage = null;
+
+  function setCheckoutLocale(value) {
+    const next = checkoutLocale(value);
+    if (!next) return;
+    locale = next;
+    try {localStorage.setItem('zm-rush-checkout-language', locale);} catch {}
+    refreshDraft();
+  }
+
+  function syncBotLanguage() {
+    const initData = window.Telegram?.WebApp?.initData;
+    if (!initData || pendingLanguage) return pendingLanguage;
+    const revision = localeRevision;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    pendingLanguage = (async () => {
+      try {
+        const response = await fetch('https://zmrush-ze-shop.miyagi675.workers.dev/catalog-language', {
+          method: 'POST', headers: {'content-type': 'application/json'}, credentials: 'omit',
+          body: JSON.stringify({initData}), signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const result = await response.json();
+        if (revision === localeRevision) setCheckoutLocale(result.language);
+      } catch {}
+    })().finally(() => {clearTimeout(timeout);pendingLanguage = null;});
+    return pendingLanguage;
+  }
+
+  function refreshDraft() {
+    draft = cartDraft(cart, checkout.dataset.sellerUrl, {locale});
+    if (draft) checkout.href = draft.url;
+    else checkout.removeAttribute('href');
+  }
 
   for (const [type, label] of productTypes) {
     const button = document.createElement('button');
@@ -160,9 +201,7 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     for (const button of document.querySelectorAll('.card-cart-button')) {
       updateCardCartButton(button);
     }
-    draft = cartDraft(cart, checkout.dataset.sellerUrl, {formatPrice: productPrice});
-    if (draft) checkout.href = draft.url;
-    else checkout.removeAttribute('href');
+    refreshDraft();
   }
 
   function refresh(preferredType) {
@@ -203,9 +242,17 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     refresh();
   });
 
-  checkout.onclick = event => {
+  window.addEventListener('zm-rush:languagechange', event => {
+    localeRevision++;
+    setCheckoutLocale(event.detail);
+  });
+  window.Telegram?.WebApp?.onEvent?.('activated', syncBotLanguage);
+
+  checkout.onclick = async event => {
     event.preventDefault();
     event.stopPropagation();
+    if (pendingLanguage) await pendingLanguage;
+    refreshDraft();
     if (!draft) return;
 
     const tg = window.Telegram?.WebApp;
@@ -225,5 +272,7 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
 
   renderCart();
   refresh();
+  setCheckoutLocale(locale);
+  syncBotLanguage();
   return {refresh, createCartButton};
 }

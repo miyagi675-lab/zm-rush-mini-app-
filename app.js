@@ -1,4 +1,4 @@
-import {productPrice,setupPurchase} from './purchase.js?v=11';
+import {productPrice,setupPurchase} from './purchase.js?v=12';
 import {english} from './language.js?v=19';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
@@ -8,7 +8,7 @@ import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
 import {setupModelBrowser} from './model-browser.js?v=13';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPrices} from './model-prices.js?v=4';
-import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=11';
+import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=12';
 import {hatPrices} from './hat-prices.js?v=1';
 import {weapons} from './weapon-catalog.js?v=4';
 
@@ -67,9 +67,9 @@ try {
 
 const toast=text=>{$('toast').textContent=text;};
 function modelProduct(model) {
-  return {...model, type: 'model', price: modelPrices[model.id]};
+  return {...model, nameEn: model.nameEn || english(model.name), type: 'model', price: modelPrices[model.id]};
 }
-const hatProduct = entry => ({...entry, type: 'hat', price: hatPrices[entry.id]});
+const hatProduct = entry => ({...entry, nameEn: english(entry.name), type: 'hat', price: hatPrices[entry.id]});
 const weaponProduct = entry => ({...entry, type: 'weapon', price: weaponPrice});
 const purchase = setupPurchase(() => {
   if (!sceneAvailable || !ct) return [];

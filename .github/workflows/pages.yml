@@ -27,6 +27,7 @@ jobs:
           node-version: '24'
       - run: npm ci
       - run: npm test
+      - run: node --test scripts/cart.test.mjs bot/worker.test.mjs bot/language.test.mjs
       - run: npx playwright-core install --with-deps chromium
       - run: npm run test:browser
       - name: Prepare static site
