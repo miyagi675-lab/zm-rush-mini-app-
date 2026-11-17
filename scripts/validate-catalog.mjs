@@ -94,9 +94,13 @@ for (const group of modelGroups) {
     assert(modelIds.has(id), group.id + ': unknown model ' + id);
   }
 }
+assert.equal(Object.keys(modelPrices).length, modelIds.size, 'Every model must have a confirmed price');
 for (const [id, price] of Object.entries(modelPrices)) {
   assert(modelIds.has(id), 'Price refers to unknown model ' + id);
-  assert(Number.isSafeInteger(price) && price > 0, 'Invalid RUB price for ' + id);
+  assert(Number.isSafeInteger(price.amount) && price.amount >= 0, 'Invalid model price for ' + id);
+  assert.equal(price.currency, 'USD', 'Invalid model currency for ' + id);
+  assert.equal(price.period, 'month', 'Invalid model price period for ' + id);
+  assert.equal(price.amount === 0, id === 'gign', 'Only the classic CT model is free');
 }
 
 for (const item of entries) {

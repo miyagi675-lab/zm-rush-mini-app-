@@ -1,14 +1,14 @@
-import {productPrice,setupPurchase} from './purchase.js?v=10';
-import {english} from './language.js?v=17';
+import {productPrice,setupPurchase} from './purchase.js?v=11';
+import {english} from './language.js?v=18';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL,measureMDLPose} from './mdl.js?v=8';
 import {entries,playerModels} from './catalog.js?v=11';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
-import {setupModelBrowser} from './model-browser.js?v=11';
+import {setupModelBrowser} from './model-browser.js?v=12';
 import {createPreviewLoader} from './preview-loader.js?v=1';
-import {modelPriceLabel, modelPrices} from './model-prices.js?v=2';
-import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=10';
+import {modelPrices} from './model-prices.js?v=3';
+import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=11';
 import {hatPrices} from './hat-prices.js?v=1';
 import {weapons} from './weapon-catalog.js?v=4';
 
@@ -56,8 +56,7 @@ try {
 
 const toast=text=>{$('toast').textContent=text;};
 function modelProduct(model) {
-  const amount = modelPrices[model.id];
-  return {...model, type: 'model', price: Number.isInteger(amount) ? {amount, currency: 'RUB', period: 'month'} : null};
+  return {...model, type: 'model', price: modelPrices[model.id]};
 }
 const hatProduct = entry => ({...entry, type: 'hat', price: hatPrices[entry.id]});
 const weaponProduct = entry => ({...entry, type: 'weapon', price: weaponPrice});
@@ -132,7 +131,7 @@ function setBusy(value) {
 }
 function refreshPreviewPrices() {
   const prices = $('studio-prices');
-  const modelPrice = modelPriceLabel(player.id);
+  const modelPrice = modelPrices[player.id] ? productPrice(modelPrices[player.id]) : '';
   const weaponPrice = equippedWeapon ? 'Оружие · ' + weaponPriceLabel : '';
   const hatPrice = current && hatPrices[current.id] ? 'Шапка · ' + productPrice(hatPrices[current.id]) : '';
   for (const [id, label] of [['model-price', modelPrice], ['weapon-price', weaponPrice], ['hat-price', hatPrice]]) {
@@ -365,6 +364,7 @@ document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.len
 refreshSlots();syncFilters();renderCatalog();
 const initialTab = new URLSearchParams(location.search).get('tab') === 'weapons' ? 'weapons' : null;
 modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,isReady:()=>sceneAvailable&&Boolean(ct),onChoose:choosePlayer,initialTab,
+ priceLabel: model => productPrice(modelPrices[model.id]),
  createCartButton: model => purchase.createCartButton(modelProduct(model))});
 const syncWeapons = setupWeaponBrowser(selectWeapon, entry => purchase.createCartButton(weaponProduct(entry)));
 setBusy(false);

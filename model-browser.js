@@ -1,7 +1,7 @@
 import {modelGroups,modelGroupById,modelPreview} from './model-groups.js?v=2';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 
-export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()=>true,initialTab=null,createCartButton}){
+export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()=>true,initialTab=null,createCartButton,priceLabel=()=>''}){
  const $=id=>document.getElementById(id),byId=new Map(models.map(m=>[m.id,m]));
  const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))||fallback;}catch{return fallback;}};
  const store=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
@@ -86,8 +86,9 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
    img.onerror=()=>{img.hidden=true;const fallback=document.createElement('span');fallback.className='model-image-fallback';fallback.textContent=model.name.slice(0,2).toUpperCase();picture.append(fallback);};picture.append(img);
    const name=document.createElement('span');name.className='model-name';name.textContent=model.name;
    const genre=document.createElement('span');genre.className='model-genre';genre.textContent=group?.name||'Другое';
+   const price=document.createElement('span');price.className='catalog-item-price';price.textContent=priceLabel(model);
    const status=document.createElement('span');status.className='model-card-status';
-   pick.append(picture,name,genre,status);
+   pick.append(picture,name,genre,price,status);
    const fav=button(favorites.has(model.id)?'★':'☆',()=>{favorites.has(model.id)?favorites.delete(model.id):favorites.add(model.id);store('zm-rush-model-favorites',[...favorites]);render(true);const next=list.querySelector('[data-model-id="'+model.id+'"] .model-favorite');(next||filters.querySelector('[data-model-filter="favorites"]')).focus({preventScroll:true});});fav.className='model-favorite';fav.setAttribute('aria-label',(favorites.has(model.id)?'Убрать модель из избранного: ':'Добавить модель в избранное: ')+model.name);fav.setAttribute('aria-pressed',String(favorites.has(model.id)));
    const check=document.createElement('span');check.className='model-check';check.textContent='✓';check.setAttribute('aria-hidden','true');card.append(pick,fav,check);
    const cartButton = createCartButton?.(model);

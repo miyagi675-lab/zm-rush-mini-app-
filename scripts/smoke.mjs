@@ -279,6 +279,26 @@ try {
       assert(await page.evaluate(() => window.swipesDisabled));
       await assertDesktopCartButton(page, '#tab-hats', '#items article');
       await assertDesktopCartButton(page, '#tab-models', '#model-items article');
+      assert.equal(await page.locator('#model-items .catalog-item-price').count(), 121);
+      assert.equal(await page.locator('[data-model-id="gign"] .catalog-item-price').textContent(), 'Бесплатно');
+      assert.equal(await page.locator('[data-model-id="p_chick"] .catalog-item-price').textContent(), '$250 / месяц');
+      assert.equal(await page.locator('[data-model-id="p_itsuki"] .catalog-item-price').textContent(), '$9 / месяц');
+      await assertPurchase(page, 'CT', /^Бесплатно$/);
+      assert.equal(await page.locator('#model-price').textContent(), 'Бесплатно');
+      const freeModelButton = page.locator('[data-model-id="gign"] .card-cart-button');
+      await freeModelButton.click();
+      const freeCart = await openCart(page, '#cart-open-top');
+      await assertCartTotal(freeCart, 'USD:month', /^Бесплатно$/);
+      assert.equal(await freeCart.locator('[data-cart-unknown]').count(), 0);
+      const freeDraft = new URL(await page.locator('#cart-checkout').getAttribute('href')).searchParams.get('text');
+      assert.match(freeDraft, /CT.*Бесплатно/);
+      await page.keyboard.press('Escape');
+      await freeModelButton.click();
+      await assertCartCount(page, 0);
+      await page.locator('[data-language="en"]').click();
+      await page.waitForFunction(() => document.getElementById('model-price').textContent === 'Free');
+      assert.equal(await page.locator('[data-model-id="dobby"] .catalog-item-price').textContent(), '$30 / month');
+      await page.locator('[data-language="ru"]').click();
       await assertDesktopCartButton(page, '#tab-weapons', '#weapon-items article');
       await page.locator('#tab-weapons').click();
       await page.locator('#weapons-panel').waitFor({state: 'visible'});
@@ -357,7 +377,8 @@ try {
       assert(await page.locator('#retry-model').isVisible(), 'Adding a model must not start loading it');
       await dobbyCard.locator('.model-pick').click();
       await loadOk(page);
-      await assertPurchase(page, 'Добби', /^3 000 ₽ \/ месяц$/);
+      await assertPurchase(page, 'Добби', /^\$30 \/ месяц$/);
+      assert.equal(await page.locator('#model-price').textContent(), '$30 / месяц');
       assert.equal(await page.locator('#cart-add').isEnabled(), false, 'Selected offer must reflect a direct add');
       await page.locator('#tab-hats').click();
       await page.evaluate(() => window.scrollTo(0, 600));
@@ -376,7 +397,7 @@ try {
       assert.equal(await page.locator('#cart-add').isEnabled(), false);
       assert.equal(await page.locator('#hat-price').textContent(), 'Шапка · $8 / месяц');
       await page.locator('[data-product-type="model"]').click();
-      await assertPurchase(page, 'Добби', /^3 000 ₽ \/ месяц$/);
+      await assertPurchase(page, 'Добби', /^\$30 \/ месяц$/);
       assert.equal(await page.locator('#cart-add').isEnabled(), false, 'Choosing an added product must not enable duplicates');
       await page.locator('[data-product-type="hat"]').click();
       await assertPurchase(page, hat, /^\$8 \/ месяц$/);
@@ -421,12 +442,19 @@ try {
 
       let cart = await openCart(page, '#cart-open-bottom');
       assert.equal(await cart.locator('[data-cart-item]').count(), 4);
-      await assertCartTotal(cart, 'RUB:month', /3 000 ₽\s*\/\s*месяц/);
-      await assertCartTotal(cart, 'USD:month', /\$17\s*\/\s*месяц/);
+      assert.equal(await cart.locator('[data-cart-total="RUB:month"]').count(), 0);
+      await assertCartTotal(cart, 'USD:month', /\$47\s*\/\s*месяц/);
       await assertCartTotal(cart, 'USD:lifetime', /\$600.*навсегда/);
       await page.keyboard.press('Escape');
       assert.equal(await cart.isVisible(), false);
 
+      // Legacy stored cart prices must be replaced with the current catalog prices.
+      await page.evaluate(() => {
+        const saved = JSON.parse(localStorage.getItem('zm-rush-cart'));
+        const dobby = saved.find(item => item.type === 'model' && item.id === 'dobby');
+        dobby.price = {amount: 3000, currency: 'RUB', period: 'month'};
+        localStorage.setItem('zm-rush-cart', JSON.stringify(saved));
+      });
       await page.reload();
       await loadOk(page);
       await assertCartCount(page, 4);
@@ -434,10 +462,12 @@ try {
       await assertCardCartButton(bunnyCard, hat, true);
       cart = await openCart(page, '#cart-open-top');
       assert.equal(await cart.locator('[data-cart-item]').count(), 4);
+      await assertCartTotal(cart, 'USD:month', /\$47\s*\/\s*месяц/);
+      assert.equal(await cart.locator('[data-cart-total="RUB:month"]').count(), 0);
       await cart.locator('[data-cart-item="hat:bunny"] [data-cart-remove]').click();
       await assertCartCount(page, 3);
       assert.equal(await cart.locator('[data-cart-item="hat:bunny"]').count(), 0);
-      await assertCartTotal(cart, 'USD:month', /\$9\s*\/\s*месяц/);
+      await assertCartTotal(cart, 'USD:month', /\$39\s*\/\s*месяц/);
       await assertCheckout(page, ['Добби', 'Butterfly Knife | Doppler Sapphire', 'Рыцарь'], [hat]);
       await page.keyboard.press('Escape');
       await assertCardCartButton(bunnyCard, hat, false);

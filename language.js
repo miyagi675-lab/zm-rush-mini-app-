@@ -24,6 +24,7 @@ const pairs=`Маленькие скины|Small skins
 Открыть чат с продавцом|Open seller chat
 Корзина|Cart
 Цена по запросу|Price on request
+Бесплатно|Free
 Повторить загрузку|Retry loading
 Не удалось загрузить модель.|Could not load the model.
 Повторите загрузку или выберите другую модель.|Retry loading or choose another model.

@@ -43,12 +43,12 @@ export function restoreCart(savedRefs, catalogProducts) {
 function readPrice(price) {
   const currency = price?.currency;
   const period = price?.period ?? null;
-  if (!Number.isFinite(price?.amount) || price.amount <= 0 ||
+  if (!Number.isFinite(price?.amount) || price.amount < 0 ||
       typeof currency !== 'string' || !/^[A-Z]{3}$/.test(currency) ||
       (period !== null && !periods.ru.has(period))) return null;
 
   const cents = Math.round(price.amount * 100);
-  if (!Number.isSafeInteger(cents) || cents <= 0) return null;
+  if (!Number.isSafeInteger(cents) || cents < 0) return null;
   return {cents, currency, period};
 }
 
@@ -76,6 +76,7 @@ export function summarizeCart(products) {
 }
 
 function localizedPrice(price, locale) {
+  if (price.amount === 0) return locale === 'en' ? 'Free' : 'Бесплатно';
   const amount = new Intl.NumberFormat(locale === 'en' || price.currency === 'USD' ? 'en-US' : 'ru-RU', {
     style: 'currency',
     currency: price.currency,

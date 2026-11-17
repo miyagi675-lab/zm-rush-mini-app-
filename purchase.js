@@ -1,4 +1,4 @@
-import {cartDraft, productKey, restoreCart, summarizeCart} from './cart.js?v=1';
+import {cartDraft, productKey, restoreCart, summarizeCart} from './cart.js?v=2';
 
 const productTypes = new Map([
   ['model', 'Модель'],
@@ -13,7 +13,8 @@ const periods = new Map([
 ]);
 
 export function productPrice(price) {
-  if (!price || !Number.isFinite(price.amount) || price.amount <= 0) return 'Цена по запросу';
+  if (!price || !Number.isFinite(price.amount) || price.amount < 0) return 'Цена по запросу';
+  if (price.amount === 0) return 'Бесплатно';
 
   const amount = new Intl.NumberFormat(price.currency === 'USD' ? 'en-US' : 'ru-RU', {
     style: 'currency',
