@@ -168,6 +168,25 @@ async function addToCart(page, count) {
   assert.equal(await page.evaluate(() => window.purchaseUrl), undefined, 'Adding an item must not open Telegram');
 }
 
+async function assertCardCartButton(card, name, added) {
+  const button = card.locator('.card-cart-button');
+  assert.equal(await button.isEnabled(), !added);
+  assert.equal(await button.getAttribute('aria-label'), (added ? 'Уже в корзине: ' : 'Добавить в корзину: ') + name);
+  return button;
+}
+
+async function addFromCard(page, card, name, count) {
+  const pick = card.locator('.model-pick, .item-pick');
+  assert.equal(await pick.getAttribute('aria-pressed'), 'false', 'The tested product must start unequipped');
+  const button = await assertCardCartButton(card, name, false);
+  await button.click();
+  await assertCardCartButton(card, name, true);
+  await assertCartCount(page, count);
+  assert.equal(await pick.getAttribute('aria-pressed'), 'false', 'Adding a product directly must leave it unequipped');
+  assert.equal(await page.locator('#cart-dialog').isVisible(), false);
+  assert.equal(await page.evaluate(() => window.purchaseUrl), undefined);
+}
+
 async function openCart(page, opener) {
   await page.locator(opener).click();
   const cart = page.locator('#cart-dialog');
@@ -296,11 +315,14 @@ try {
       await waitForRetry(page, errors, requestFailures);
       assert.equal(await page.locator('#cart-add').isEnabled(), false, 'Cannot add a model before it has loaded');
       await page.locator('#tab-models').click();
-      await page.locator('#model-items [data-model-id="dobby"] .model-pick').click();
+      await assertCartCount(page, 0);
+      const dobbyCard = page.locator('#model-items [data-model-id="dobby"]');
+      await addFromCard(page, dobbyCard, 'Добби', 1);
+      assert(await page.locator('#retry-model').isVisible(), 'Adding a model must not start loading it');
+      await dobbyCard.locator('.model-pick').click();
       await loadOk(page);
       await assertPurchase(page, 'Добби', /^3 000 ₽ \/ месяц$/);
-      await assertCartCount(page, 0);
-      await addToCart(page, 1);
+      assert.equal(await page.locator('#cart-add').isEnabled(), false, 'Selected offer must reflect a direct add');
       await page.locator('#tab-hats').click();
       await page.evaluate(() => window.scrollTo(0, 600));
       await page.waitForFunction(() => {
@@ -308,12 +330,14 @@ try {
         return window.scrollY >= 600 && bottom > 0 && top < innerHeight;
       });
       await waitForStudioDraw(page);
-      await page.locator('#items [data-id="bunny"] .item-pick').click();
+      const bunnyCard = page.locator('#items [data-id="bunny"]');
+      const hat = await bunnyCard.locator('.item-name').textContent();
+      await addFromCard(page, bunnyCard, hat, 2);
+      assert.equal(await page.locator('#hat-price').isVisible(), false);
+      await bunnyCard.locator('.item-pick').click();
       await page.locator('#purchase-options').waitFor({state: 'visible'});
-      await page.waitForFunction(() => !document.querySelector('#cart-add').disabled);
-      const hat = await page.locator('#items [data-id="bunny"] .item-name').textContent();
       await assertPurchase(page, hat, /^\$8 \/ месяц$/);
-      await addToCart(page, 2);
+      assert.equal(await page.locator('#cart-add').isEnabled(), false);
       assert.equal(await page.locator('#hat-price').textContent(), 'Шапка · $8 / месяц');
       await page.locator('[data-product-type="model"]').click();
       await assertPurchase(page, 'Добби', /^3 000 ₽ \/ месяц$/);
@@ -322,11 +346,14 @@ try {
       await assertPurchase(page, hat, /^\$8 \/ месяц$/);
       await page.locator('#tab-weapons').click();
       await page.locator('#weapon-filters [data-category="knife"]').click();
-      const knife = page.locator('[data-weapon-id="butterfly-knife-doppler-sapphire"] .item-pick');
+      const knifeCard = page.locator('[data-weapon-id="butterfly-knife-doppler-sapphire"]');
+      const knife = knifeCard.locator('.item-pick');
+      await addFromCard(page, knifeCard, 'Butterfly Knife | Doppler Sapphire', 3);
+      assert.equal(await page.locator('#weapon-price').isVisible(), false);
       await knife.click();
       await loadOk(page);
       await assertPurchase(page, 'Butterfly Knife | Doppler Sapphire', /^\$9 \/ месяц$/);
-      await addToCart(page, 3);
+      assert.equal(await page.locator('#cart-add').isEnabled(), false);
       assert(await page.locator('#model-price').isVisible());
       assert(await page.locator('#weapon-price').isVisible());
       const modelBadge = await page.locator('#model-price').boundingBox();
@@ -367,6 +394,8 @@ try {
       await page.reload();
       await loadOk(page);
       await assertCartCount(page, 4);
+      await page.locator('#tab-hats').click();
+      await assertCardCartButton(bunnyCard, hat, true);
       cart = await openCart(page, '#cart-open-top');
       assert.equal(await cart.locator('[data-cart-item]').count(), 4);
       await cart.locator('[data-cart-item="hat:bunny"] [data-cart-remove]').click();
@@ -374,6 +403,8 @@ try {
       assert.equal(await cart.locator('[data-cart-item="hat:bunny"]').count(), 0);
       await assertCartTotal(cart, 'USD:month', /\$9\s*\/\s*месяц/);
       await assertCheckout(page, ['Добби', 'Butterfly Knife | Doppler Sapphire', 'Рыцарь'], [hat]);
+      await page.keyboard.press('Escape');
+      await assertCardCartButton(bunnyCard, hat, false);
       assert.deepEqual(errors, []);
     } finally {
       await context.close();

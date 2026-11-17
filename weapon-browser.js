@@ -1,6 +1,6 @@
 import {Box3, Matrix4, Vector3} from './vendor/three.module.js';
 import {createPreviewLoader} from './preview-loader.js?v=1';
-import {productPrice} from './purchase.js?v=8';
+import {productPrice} from './purchase.js?v=9';
 import {weapons} from './weapon-catalog.js?v=4';
 
 export function prepareWeapon(model, entry) {
@@ -77,7 +77,7 @@ const categories = {all:'Все', rifle:'Винтовки', pistol:'Пистол
 export const weaponPrice = Object.freeze({amount: 9, currency: 'USD', period: 'month'});
 export const weaponPriceLabel = productPrice(weaponPrice);
 
-export function setupWeaponBrowser(onChoose) {
+export function setupWeaponBrowser(onChoose, createCartButton) {
   const list = document.getElementById('weapon-items');
   const filters = document.getElementById('weapon-filters');
   const search = document.getElementById('weapon-search');
@@ -129,6 +129,8 @@ export function setupWeaponBrowser(onChoose) {
       price.textContent = weaponPriceLabel;
       button.append(image, name, price);
       card.append(button);
+      const cartButton = createCartButton?.(entry);
+      if (cartButton) card.append(cartButton);
       fragment.append(card);
     }
     list.replaceChildren(fragment);

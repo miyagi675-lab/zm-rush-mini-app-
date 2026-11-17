@@ -35,6 +35,8 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
   const checkout = document.getElementById('cart-checkout');
   const storageKey = 'zm-rush-cart';
   const counters = document.querySelectorAll('[data-cart-count]');
+  const cardCartIcon = document.createElement('template');
+  cardCartIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.4 11h11.8l2-8H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span aria-hidden="true">+</span>';
   const options = document.getElementById('purchase-options');
   const name = document.getElementById('purchase-name');
   const price = document.getElementById('purchase-price');
@@ -42,6 +44,7 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
   let selectedType = 'model';
   let selected = null;
   let cart = loadCart();
+  let cartKeys = new Set();
   let draft = null;
 
   for (const [type, label] of productTypes) {
@@ -68,6 +71,37 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     } catch {}
     renderCart();
     refresh();
+  }
+
+  function addProduct(product) {
+    const key = productKey(product);
+    if (!key || cartKeys.has(key)) return;
+    cart = [...cart, product];
+    saveCart();
+  }
+
+  function updateCardCartButton(button) {
+    const inCart = cartKeys.has(button.dataset.cartKey);
+    const label = (inCart ? 'Уже в корзине: ' : 'Добавить в корзину: ') + button.dataset.productName;
+    button.disabled = inCart;
+    button.lastElementChild.textContent = inCart ? '✓' : '+';
+    button.setAttribute('aria-label', label);
+    button.title = label;
+  }
+
+  function createCartButton(product) {
+    const button = document.createElement('button');
+    button.className = 'card-cart-button';
+    button.type = 'button';
+    button.dataset.cartKey = productKey(product);
+    button.dataset.productName = product.name;
+    button.append(cardCartIcon.content.cloneNode(true));
+    button.onclick = event => {
+      event.stopPropagation();
+      addProduct(product);
+    };
+    updateCardCartButton(button);
+    return button;
   }
 
   function renderCart() {
@@ -116,6 +150,10 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     document.getElementById('cart-summary').hidden = cart.length === 0;
     checkout.hidden = cart.length === 0;
     for (const counter of counters) counter.textContent = String(cart.length);
+    cartKeys = new Set(cart.map(productKey));
+    for (const button of document.querySelectorAll('.card-cart-button')) {
+      updateCardCartButton(button);
+    }
     draft = cartDraft(cart, checkout.dataset.sellerUrl, {formatPrice: productPrice});
     if (draft) checkout.href = draft.url;
     else checkout.removeAttribute('href');
@@ -138,15 +176,13 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     name.textContent = selected?.name || 'Товар не выбран';
     price.hidden = !selected;
     price.textContent = selected ? productPrice(selected.price) : '';
-    const inCart = selected && cart.some(product => productKey(product) === productKey(selected));
+    const inCart = selected && cartKeys.has(productKey(selected));
     add.textContent = inCart ? 'Уже в корзине' : 'Добавить в корзину';
     add.disabled = busy || !selected || Boolean(inCart);
   }
 
   add.onclick = () => {
-    if (add.disabled || !selected) return;
-    cart = [...cart, selected];
-    saveCart();
+    if (!add.disabled && selected) addProduct(selected);
   };
   for (const opener of document.querySelectorAll('[data-cart-open]')) {
     opener.onclick = () => {
@@ -183,5 +219,5 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
 
   renderCart();
   refresh();
-  return {refresh};
+  return {refresh, createCartButton};
 }

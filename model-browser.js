@@ -1,7 +1,7 @@
 import {modelGroups,modelGroupById,modelPreview} from './model-groups.js?v=2';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 
-export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()=>true,initialTab=null}){
+export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()=>true,initialTab=null,createCartButton}){
  const $=id=>document.getElementById(id),byId=new Map(models.map(m=>[m.id,m]));
  const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))||fallback;}catch{return fallback;}};
  const store=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
@@ -89,7 +89,10 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
    const status=document.createElement('span');status.className='model-card-status';
    pick.append(picture,name,genre,status);
    const fav=button(favorites.has(model.id)?'★':'☆',()=>{favorites.has(model.id)?favorites.delete(model.id):favorites.add(model.id);store('zm-rush-model-favorites',[...favorites]);render(true);const next=list.querySelector('[data-model-id="'+model.id+'"] .model-favorite');(next||filters.querySelector('[data-model-filter="favorites"]')).focus({preventScroll:true});});fav.className='model-favorite';fav.setAttribute('aria-label',(favorites.has(model.id)?'Убрать модель из избранного: ':'Добавить модель в избранное: ')+model.name);fav.setAttribute('aria-pressed',String(favorites.has(model.id)));
-   const check=document.createElement('span');check.className='model-check';check.textContent='✓';check.setAttribute('aria-hidden','true');card.append(pick,fav,check);fragment.append(card);
+   const check=document.createElement('span');check.className='model-check';check.textContent='✓';check.setAttribute('aria-hidden','true');card.append(pick,fav,check);
+   const cartButton = createCartButton?.(model);
+   if (cartButton) card.append(cartButton);
+   fragment.append(card);
   }
   list.replaceChildren(fragment);list.scrollTop=scrollTop;
   loadModelPreviews(list);

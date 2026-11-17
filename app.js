@@ -1,14 +1,14 @@
-import {productPrice,setupPurchase} from './purchase.js?v=8';
+import {productPrice,setupPurchase} from './purchase.js?v=9';
 import {english} from './language.js?v=17';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL,measureMDLPose} from './mdl.js?v=8';
 import {entries,playerModels} from './catalog.js?v=11';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
-import {setupModelBrowser} from './model-browser.js?v=10';
+import {setupModelBrowser} from './model-browser.js?v=11';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPriceLabel, modelPrices} from './model-prices.js?v=2';
-import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=8';
+import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=9';
 import {hatPrices} from './hat-prices.js?v=1';
 import {weapons} from './weapon-catalog.js?v=4';
 
@@ -91,7 +91,7 @@ function renderCatalog(){
   pick.append(img,name,category,price);pick.onclick=()=>selectLook(e,{},true);pick.onpointerenter=pick.onfocus=()=>{if(ready)prefetchModel('hats/'+e.id+'.mdl');};
   const fav=document.createElement('button');fav.className='favorite';fav.textContent=favorites.has(e.id)?'★':'☆';fav.title=favorites.has(e.id)?'Убрать из избранного':'Добавить в избранное';fav.setAttribute('aria-label',fav.title);fav.setAttribute('aria-pressed',String(favorites.has(e.id)));
   fav.onclick=ev=>{ev.stopPropagation();favorites.has(e.id)?favorites.delete(e.id):favorites.add(e.id);localStorage.setItem('zm-rush-favorites',JSON.stringify([...favorites]));renderCatalog();};
-  card.append(pick,fav);if(current?.id===e.id){const check=document.createElement('span');check.className='check';check.textContent='✓';card.append(check);}$('items').append(card);
+  card.append(pick,fav,purchase.createCartButton(hatProduct(e)));if(current?.id===e.id){const check=document.createElement('span');check.className='check';check.textContent='✓';card.append(check);}$('items').append(card);
  }
  loadHatPreviews($('items'));
 }
@@ -364,8 +364,9 @@ document.addEventListener('keydown',e=>{
 document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.length);
 refreshSlots();syncFilters();renderCatalog();
 const initialTab = new URLSearchParams(location.search).get('tab') === 'weapons' ? 'weapons' : null;
-modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,isReady:()=>sceneAvailable&&Boolean(ct),onChoose:choosePlayer,initialTab});
-const syncWeapons = setupWeaponBrowser(selectWeapon);
+modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,isReady:()=>sceneAvailable&&Boolean(ct),onChoose:choosePlayer,initialTab,
+ createCartButton: model => purchase.createCartButton(modelProduct(model))});
+const syncWeapons = setupWeaponBrowser(selectWeapon, entry => purchase.createCartButton(weaponProduct(entry)));
 setBusy(false);
 let stopPreviewLoop;
 try{
