@@ -1,5 +1,5 @@
-import {productPrice,setupPurchase} from './purchase.js?v=7';
-import {english} from './language.js?v=16';
+import {productPrice,setupPurchase} from './purchase.js?v=8';
+import {english} from './language.js?v=17';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL,measureMDLPose} from './mdl.js?v=8';
@@ -8,7 +8,7 @@ import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
 import {setupModelBrowser} from './model-browser.js?v=10';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPriceLabel, modelPrices} from './model-prices.js?v=2';
-import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=7';
+import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=8';
 import {hatPrices} from './hat-prices.js?v=1';
 import {weapons} from './weapon-catalog.js?v=4';
 
@@ -55,16 +55,24 @@ try {
 } catch {}
 
 const toast=text=>{$('toast').textContent=text;};
+function modelProduct(model) {
+  const amount = modelPrices[model.id];
+  return {...model, type: 'model', price: Number.isInteger(amount) ? {amount, currency: 'RUB', period: 'month'} : null};
+}
+const hatProduct = entry => ({...entry, type: 'hat', price: hatPrices[entry.id]});
+const weaponProduct = entry => ({...entry, type: 'weapon', price: weaponPrice});
 const purchase = setupPurchase(() => {
   if (!sceneAvailable || !ct) return [];
-  const amount = modelPrices[player.id];
-  const price = Number.isInteger(amount) ? {amount, currency: 'RUB', period: 'month'} : null;
   return [
-    {id: player.id, name: player.name, type: 'model', price},
-    current && {id: current.id, name: current.name, type: 'hat', price: hatPrices[current.id]},
-    equippedWeapon && {...equippedWeapon, type: 'weapon', price: weaponPrice},
+    modelProduct(player),
+    current && hatProduct(current),
+    equippedWeapon && weaponProduct(equippedWeapon),
   ];
-}, () => selectionBusy || !ready);
+}, () => selectionBusy || !ready, [
+  ...playerModels.map(modelProduct),
+  ...entries.map(hatProduct),
+  ...weapons.map(weaponProduct),
+]);
 function syncSelection(){for(const card of $('items').children){const selected=card.dataset.id===current?.id;card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
 const loadHatPreviews = createPreviewLoader();
 function renderCatalog(){

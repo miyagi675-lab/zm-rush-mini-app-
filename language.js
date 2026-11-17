@@ -14,6 +14,15 @@ const pairs=`Маленькие скины|Small skins
 ТОВАР ДЛЯ ПОКУПКИ|ITEM TO BUY
 Товар для покупки|Item to buy
 Товар не выбран|No item selected
+Открыть корзину|Open cart
+Добавить в корзину|Add to cart
+Уже в корзине|In cart
+Корзина пуста|Your cart is empty
+Закрыть корзину|Close cart
+Убрать из корзины|Remove from cart
+Итого по указанным ценам|Total for priced items
+Открыть чат с продавцом|Open seller chat
+Корзина|Cart
 Цена по запросу|Price on request
 Повторить загрузку|Retry loading
 Не удалось загрузить модель.|Could not load the model.
@@ -232,4 +241,4 @@ function applyLanguage(){
 }
 const switcher=document.createElement('div');switcher.style.cssText='display:flex;gap:8px;align-items:center';switcher.setAttribute('aria-label','Language');
 for(const [code,label] of [['ru','RU'],['en','ENG']]){const button=document.createElement('button');button.textContent=label;button.dataset.language=code;button.style.cssText='padding:8px 12px;border:1px solid #88a65a;border-radius:12px;background:#1c291e;color:#d6e1cc;cursor:pointer';button.onclick=()=>{language=code;try{localStorage.setItem('zm-rush-language',code);}catch{}applyLanguage();window.dispatchEvent(new CustomEvent('zm-rush:languagechange',{detail:language}));};switcher.append(button);}
-document.querySelector('header').append(switcher);applyLanguage();
+document.getElementById('header-actions').append(switcher);applyLanguage();

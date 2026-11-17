@@ -148,14 +148,48 @@ async function assertOffscreenStudio(page) {
 }
 
 async function assertPurchase(page, expectedName, expectedPrice) {
-  const link = page.locator('#buy');
   await page.waitForFunction(name => document.querySelector('#purchase-name').textContent === name, expectedName);
   const price = (await page.locator('#purchase-price').textContent()).replace(/\s+/g, ' ').trim();
   assert.match(price, expectedPrice);
-  const href = new URL(await link.getAttribute('href'));
+}
+
+async function assertCartCount(page, count) {
+  const labels = page.locator('#cart-open-top [data-cart-count], #cart-open-bottom [data-cart-count]');
+  assert.equal(await labels.count(), 2);
+  assert.deepEqual((await labels.allTextContents()).map(text => text.trim()), [String(count), String(count)]);
+}
+
+async function addToCart(page, count) {
+  const add = page.locator('#cart-add');
+  await add.click();
+  await assertCartCount(page, count);
+  assert.equal(await add.isEnabled(), false, 'An item can only be added once');
+  assert.equal(await page.locator('#cart-dialog').isVisible(), false, 'Adding an item should keep the player in the fitting room');
+  assert.equal(await page.evaluate(() => window.purchaseUrl), undefined, 'Adding an item must not open Telegram');
+}
+
+async function openCart(page, opener) {
+  await page.locator(opener).click();
+  const cart = page.locator('#cart-dialog');
+  await cart.waitFor({state: 'visible'});
+  return cart;
+}
+
+async function assertCartTotal(cart, bucket, expected) {
+  const text = (await cart.locator('[data-cart-total="' + bucket + '"]').innerText()).replace(/\s+/g, ' ').trim();
+  assert.match(text, expected);
+}
+
+async function assertCheckout(page, names, excluded = []) {
+  const checkout = page.locator('#cart-checkout');
+  const href = new URL(await checkout.getAttribute('href'));
   assert.equal(href.origin, 'https://t.me');
-  assert(href.searchParams.get('text')?.includes(expectedName), 'Purchase draft has wrong product');
-  await link.click();
+  assert.equal(href.pathname.toLowerCase(), '/name_f1');
+  const draft = href.searchParams.get('text');
+  assert(draft, 'Checkout must prefill one Telegram message');
+  for (const name of names) assert(draft.includes(name), 'Checkout draft omitted ' + name);
+  for (const name of excluded) assert(!draft.includes(name), 'Checkout draft still lists ' + name);
+  await checkout.click();
   assert.equal(await page.evaluate(() => window.purchaseUrl), href.href);
 }
 
@@ -260,10 +294,13 @@ try {
       assert.equal(await page.locator('#tab-weapons').getAttribute('aria-selected'), 'true');
       await assertCompactPreview(page);
       await waitForRetry(page, errors, requestFailures);
+      assert.equal(await page.locator('#cart-add').isEnabled(), false, 'Cannot add a model before it has loaded');
       await page.locator('#tab-models').click();
       await page.locator('#model-items [data-model-id="dobby"] .model-pick').click();
       await loadOk(page);
       await assertPurchase(page, 'Добби', /^3 000 ₽ \/ месяц$/);
+      await assertCartCount(page, 0);
+      await addToCart(page, 1);
       await page.locator('#tab-hats').click();
       await page.evaluate(() => window.scrollTo(0, 600));
       await page.waitForFunction(() => {
@@ -273,12 +310,14 @@ try {
       await waitForStudioDraw(page);
       await page.locator('#items [data-id="bunny"] .item-pick').click();
       await page.locator('#purchase-options').waitFor({state: 'visible'});
-      await page.waitForFunction(() => document.querySelector('#buy').getAttribute('aria-disabled') === 'false');
+      await page.waitForFunction(() => !document.querySelector('#cart-add').disabled);
       const hat = await page.locator('#items [data-id="bunny"] .item-name').textContent();
       await assertPurchase(page, hat, /^\$8 \/ месяц$/);
+      await addToCart(page, 2);
       assert.equal(await page.locator('#hat-price').textContent(), 'Шапка · $8 / месяц');
       await page.locator('[data-product-type="model"]').click();
       await assertPurchase(page, 'Добби', /^3 000 ₽ \/ месяц$/);
+      assert.equal(await page.locator('#cart-add').isEnabled(), false, 'Choosing an added product must not enable duplicates');
       await page.locator('[data-product-type="hat"]').click();
       await assertPurchase(page, hat, /^\$8 \/ месяц$/);
       await page.locator('#tab-weapons').click();
@@ -287,6 +326,7 @@ try {
       await knife.click();
       await loadOk(page);
       await assertPurchase(page, 'Butterfly Knife | Doppler Sapphire', /^\$9 \/ месяц$/);
+      await addToCart(page, 3);
       assert(await page.locator('#model-price').isVisible());
       assert(await page.locator('#weapon-price').isVisible());
       const modelBadge = await page.locator('#model-price').boundingBox();
@@ -302,6 +342,7 @@ try {
       await knight.click();
       await loadOk(page);
       await assertPurchase(page, 'Рыцарь', /^\$600 · навсегда$/);
+      await addToCart(page, 4);
       assert.equal(await page.locator('#hat-price').textContent(), 'Шапка · $600 · навсегда');
       await page.locator('#remove').click();
       await loadOk(page);
@@ -314,12 +355,31 @@ try {
       await page.locator('#remove-weapon').click();
       assert.equal(await knife.getAttribute('aria-pressed'), 'false');
       assert.equal(await page.locator('#weapon-price').isVisible(), false);
+
+      let cart = await openCart(page, '#cart-open-bottom');
+      assert.equal(await cart.locator('[data-cart-item]').count(), 4);
+      await assertCartTotal(cart, 'RUB:month', /3 000 ₽\s*\/\s*месяц/);
+      await assertCartTotal(cart, 'USD:month', /\$17\s*\/\s*месяц/);
+      await assertCartTotal(cart, 'USD:lifetime', /\$600.*навсегда/);
+      await page.keyboard.press('Escape');
+      assert.equal(await cart.isVisible(), false);
+
+      await page.reload();
+      await loadOk(page);
+      await assertCartCount(page, 4);
+      cart = await openCart(page, '#cart-open-top');
+      assert.equal(await cart.locator('[data-cart-item]').count(), 4);
+      await cart.locator('[data-cart-item="hat:bunny"] [data-cart-remove]').click();
+      await assertCartCount(page, 3);
+      assert.equal(await cart.locator('[data-cart-item="hat:bunny"]').count(), 0);
+      await assertCartTotal(cart, 'USD:month', /\$9\s*\/\s*месяц/);
+      await assertCheckout(page, ['Добби', 'Butterfly Knife | Doppler Sapphire', 'Рыцарь'], [hat]);
       assert.deepEqual(errors, []);
     } finally {
       await context.close();
     }
   }
-  console.log('Browser smoke passed: loading recovery, Weapons tab, visibility-aware 3D, and mobile purchases.');
+  console.log('Browser smoke passed: loading recovery, Weapons tab, visibility-aware 3D, and mobile cart checkout.');
 } finally {
   await browser?.close();
   server.closeAllConnections();
