@@ -1,13 +1,13 @@
 import {productPrice,setupPurchase} from './purchase.js?v=11';
-import {english} from './language.js?v=18';
+import {english} from './language.js?v=19';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL,measureMDLPose} from './mdl.js?v=8';
-import {entries,playerModels} from './catalog.js?v=11';
+import {entries,playerModels} from './catalog.js?v=12';
 import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
-import {setupModelBrowser} from './model-browser.js?v=12';
+import {setupModelBrowser} from './model-browser.js?v=13';
 import {createPreviewLoader} from './preview-loader.js?v=1';
-import {modelPrices} from './model-prices.js?v=3';
+import {modelPrices} from './model-prices.js?v=4';
 import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=11';
 import {hatPrices} from './hat-prices.js?v=1';
 import {weapons} from './weapon-catalog.js?v=4';
@@ -18,10 +18,21 @@ const fittedHats=new Map();
 const playerCache=new Map();
 const indexedMesh = {indexed:true};
 const platformTop = .3;
-function ensureHead(model){if(model.userData.bones.has('Bip01 Head'))return;const parent=model.userData.bones.get('Bip01 Neck')||model.userData.bones.values().next().value;if(!parent)return;const bounds=new T.Box3().setFromObject(model),offset=new T.Matrix4().makeTranslation(0,0,Math.max(0,bounds.max.z-parent.elements[14]-3)),matrix=parent.clone().multiply(offset);model.userData.bones.set('Bip01 Head',matrix);const update=model.userData.updatePose;model.userData.updatePose=(...args)=>{update(...args);matrix.copy(parent).multiply(offset);};}
+function ensureHead(model, attachment) {
+ if (model.userData.bones.has('Bip01 Head')) return;
+ const parent = model.userData.bones.get(attachment?.bone || 'Bip01 Neck') || model.userData.bones.values().next().value;
+ if (!parent) return;
+ const bounds = new T.Box3().setFromObject(model);
+ const offset = attachment?.matrix ? new T.Matrix4().fromArray(attachment.matrix)
+  : new T.Matrix4().makeTranslation(0,0,Math.max(0,bounds.max.z-parent.elements[14]-3));
+ const matrix = parent.clone().multiply(offset);
+ model.userData.bones.set('Bip01 Head',matrix);
+ const update = model.userData.updatePose;
+ model.userData.updatePose = (...args) => {update(...args);matrix.copy(parent).multiply(offset);};
+}
 function trimPlayers(){for(const [id,model] of playerCache){if(playerCache.size<=2)break;if(id===player.id)continue;playerCache.delete(id);disposeMDL(model);for(const [key,look] of fittedHats)if(key.startsWith(id+':')){fittedHats.delete(key);disposeMDL(look);}}}
 function fittedHat(entry,nextBody,model=player){const key=model.id+':'+entry.id+':'+JSON.stringify(nextBody);const cached=fittedHats.get(key);if(cached){fittedHats.delete(key);fittedHats.set(key,cached);}return {key,cached};}
-function hatScaleFor(model,entry){const head=model.hatScaleOverrides?.[entry.id];if(head===undefined)return model.hatScale;return typeof model.hatScale==='number'?{head,body:model.hatScale}:{...model.hatScale,head};}
+function hatScaleFor(model,entry){const override=model.hatScaleOverrides?.[entry.id];if(override===undefined)return model.hatScale;const base=typeof model.hatScale==='number'?{head:model.hatScale,body:model.hatScale}:model.hatScale;return {...base,...(typeof override==='number'?{head:override}:override)};}
 function trimHats(){for(const [key,value] of fittedHats){if(fittedHats.size<=8)break;if(value!==hat){fittedHats.delete(key);disposeMDL(value);}}}
 const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
 const favorites=new Set(readJSON('zm-rush-favorites',[]));
@@ -98,6 +109,7 @@ function syncFilters(){document.querySelectorAll('[data-filter]').forEach(b=>{co
 function lighting(target){target.add(new T.HemisphereLight(0xe6f5d8,0x6b7866,2));const key=new T.DirectionalLight(0xfff1db,1.4);key.position.set(60,100,90);target.add(key);const fill=new T.DirectionalLight(0xa7d1ef,.7);fill.position.set(-65,30,-40);target.add(fill);}
 function isClose(){return $('head').classList.contains('active');}
 function viewHeight(close) {
+ if (!close && Number.isFinite(player.previewHeight)) return Math.max(modelHeight,player.previewHeight);
  // Use the same camera and floor reference for both Sonics: the small model is 60% of the regular model's height.
  // 85.514 is the regular Sonic's full-body height in the supplied MDL.
  // Rat keeps its existing wider view instead of being enlarged to human size.
@@ -297,7 +309,7 @@ async function choosePlayer(id,initial=false){
   next=playerCache.get(nextPlayer.id);
   if(next){playerCache.delete(nextPlayer.id);playerCache.set(nextPlayer.id,next);}
   if(!next){next=parseMDL(await load(nextPlayer.file,{onProgress:p=>{if(token===playerTicket)progressFor(message)(p);}}),null,1,{},1,indexedMesh);playerCache.set(nextPlayer.id,next);}
-  ensureHead(next);
+  ensureHead(next,nextPlayer.headAttachment);
   next.userData.updatePose(1,0);
   const nextFraming = measureMDLPose(next);
   if(current){const lookup=fittedHat(current,body,nextPlayer);nextHat=lookup.cached;if(!nextHat){nextHat=parseMDL(await load('hats/'+current.id+'.mdl'),next.userData.bones,0,body,hatScaleFor(nextPlayer,current),indexedMesh);fittedHats.set(lookup.key,nextHat);}}

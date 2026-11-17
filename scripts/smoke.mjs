@@ -5,6 +5,7 @@ import {createServer} from 'node:http';
 import {extname, resolve, relative, isAbsolute} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
+import {playerModels} from '../catalog.js';
 
 const require = createRequire(import.meta.url);
 const {chromium} = process.env.MINI_APP_PLAYWRIGHT_PATH
@@ -279,7 +280,7 @@ try {
       assert(await page.evaluate(() => window.swipesDisabled));
       await assertDesktopCartButton(page, '#tab-hats', '#items article');
       await assertDesktopCartButton(page, '#tab-models', '#model-items article');
-      assert.equal(await page.locator('#model-items .catalog-item-price').count(), 121);
+      assert.equal(await page.locator('#model-items .catalog-item-price').count(), playerModels.length);
       assert.equal(await page.locator('[data-model-id="gign"] .catalog-item-price').textContent(), 'Бесплатно');
       assert.equal(await page.locator('[data-model-id="p_chick"] .catalog-item-price').textContent(), '$250 / месяц');
       assert.equal(await page.locator('[data-model-id="p_itsuki"] .catalog-item-price').textContent(), '$9 / месяц');
@@ -353,6 +354,22 @@ try {
       await page.locator('#close-photo').click();
       await page.locator('#motion').selectOption('walk');
       await waitForStudioDraw(page);
+      await page.locator('#full').click();
+      for (const [id, amount] of [['p2_fubuki', 10], ['p2_jerry_small', 100], ['p2_panther_small', 30], ['p2_small_gangle', 30], ['p2_amongus', 10]]) {
+        const model = playerModels.find(item => item.id === id);
+        await page.locator('#model-search').fill(model.name);
+        const card = page.locator('[data-model-id="' + id + '"]');
+        assert.equal(await card.locator('.catalog-item-price').textContent(), '$' + amount + ' / месяц');
+        await card.locator('.model-pick').click();
+        await loadOk(page);
+        await assertPurchase(page, model.name, new RegExp('^\\$' + amount + ' / месяц$'));
+        assert.equal(await page.locator('#model-price').textContent(), '$' + amount + ' / месяц');
+      }
+      await page.locator('#model-search').fill('');
+      await page.locator('[data-model-filter="small"]').click();
+      for (const id of ['p2_jerry_small', 'p2_panther_small', 'p2_small_gangle']) {
+        assert.equal(await page.locator('[data-model-id="' + id + '"]').count(), 1);
+      }
       assert.deepEqual(errors, []);
     } finally {
       await context.close();

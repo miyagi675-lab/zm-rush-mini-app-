@@ -1357,6 +1357,733 @@ export const extraPlayerModels=[
     0.074
    ]
   }
+ },
+ {
+  "id": "p2_5pb",
+  "name": "5pb.",
+  "nameEn": "5pb.",
+  "file": "players-v1/p2_5pb.mdl",
+  "hatScale": {
+   "head": 1.391,
+   "body": 1.052
+  }
+ },
+ {
+  "id": "p2_ace",
+  "name": "Портгас Д. Эйс",
+  "nameEn": "Portgas D. Ace",
+  "file": "players-v1/p2_ace.mdl",
+  "hatScale": {
+   "head": 0.938,
+   "body": 0.987
+  }
+ },
+ {
+  "id": "p2_admincs2",
+  "name": "Гоку · Ультраинстинкт",
+  "nameEn": "Goku · Ultra Instinct",
+  "file": "players-v1/p2_admincs2.mdl",
+  "hatScale": {
+   "head": 1.301,
+   "body": 1.093
+  }
+ },
+ {
+  "id": "p2_agentp",
+  "name": "Агент Пи",
+  "nameEn": "Agent P",
+  "file": "players-v1/p2_agentp.mdl",
+  "hatScale": {
+   "head": 1.676,
+   "body": 1.085
+  }
+ },
+ {
+  "id": "p2_amongus",
+  "name": "Among Us",
+  "nameEn": "Among Us",
+  "file": "players-v1/p2_amongus.mdl",
+  "hatScale": {
+   "head": 1.75,
+   "body": 0.64
+  },
+  "headAttachment": {
+   "bone": "Bip01 Neck",
+   "matrix": [
+    0.6997431432382178,
+    -0.6278560346804123,
+    -0.3408171550941763,
+    0,
+    0.6926211015836259,
+    0.479351231194262,
+    0.5389790411450425,
+    0,
+    -0.175030120642658,
+    -0.6132040417902788,
+    0.7702890756072571,
+    0,
+    -5.046455793565116,
+    4.9200083496864915,
+    2.202501656532074,
+    1
+   ]
+  },
+  "hatScaleOverrides": {
+   "cheburashka": {
+    "head": 0.875,
+    "headOffset": [
+     0,
+     5,
+     0
+    ]
+   }
+  }
+ },
+ {
+  "id": "p2_anmalpc2",
+  "name": "Anmalpc2",
+  "nameEn": "Anmalpc2",
+  "file": "players-v1/p2_anmalpc2.mdl",
+  "hatScale": {
+   "head": 1.217,
+   "body": 1.04
+  }
+ },
+ {
+  "id": "p2_artclown",
+  "name": "Клоун Арт",
+  "nameEn": "Art the Clown",
+  "file": "players-v1/p2_artclown.mdl",
+  "hatScale": {
+   "head": 0.888,
+   "body": 0.928
+  }
+ },
+ {
+  "id": "p2_asamitaka",
+  "name": "Аса Митака",
+  "nameEn": "Asa Mitaka",
+  "file": "players-v1/p2_asamitaka.mdl",
+  "hatScale": {
+   "head": 0.828,
+   "body": 1.035,
+   "headOffset": [
+    0.167,
+    3.807,
+    -0.088
+   ]
+  }
+ },
+ {
+  "id": "p2_billykid",
+  "name": "Билли Кид",
+  "nameEn": "Billy Kid",
+  "file": "players-v1/p2_billykid.mdl",
+  "hatScale": {
+   "head": 0.936,
+   "body": 1.185,
+   "headOffset": [
+    2.56,
+    1.076,
+    -0.204
+   ]
+  }
+ },
+ {
+  "id": "p2_chickens_kf",
+  "name": "Чикенатор · Killing Floor",
+  "nameEn": "Chickenator · Killing Floor",
+  "file": "players-v1/p2_chickens_kf.mdl",
+  "hatScale": {
+   "head": 1.267,
+   "body": 1.048
+  }
+ },
+ {
+  "id": "p2_cisrm",
+  "name": "Cisrm",
+  "nameEn": "Cisrm",
+  "file": "players-v1/p2_cisrm.mdl",
+  "hatScale": {
+   "head": 0.567,
+   "body": 1.022,
+   "headOffset": [
+    -0.353,
+    2.638,
+    -0.141
+   ]
+  }
+ },
+ {
+  "id": "p2_deku",
+  "name": "Deku",
+  "nameEn": "Deku",
+  "file": "players-v1/p2_deku.mdl",
+  "hatScale": {
+   "head": 1.291,
+   "body": 1.139,
+   "headOffset": [
+    -1.829,
+    -0.372,
+    0.08
+   ]
+  }
+ },
+ {
+  "id": "p2_denji",
+  "name": "Дэндзи",
+  "nameEn": "Denji",
+  "file": "players-v1/p2_denji.mdl",
+  "hatScale": {
+   "head": 0.611,
+   "body": 0.947,
+   "headOffset": [
+    -1.06,
+    1.36,
+    -0.101
+   ]
+  }
+ },
+ {
+  "id": "p2_doom",
+  "name": "Доктор Дум",
+  "nameEn": "Doctor Doom",
+  "file": "players-v1/p2_doom.mdl",
+  "hatScale": {
+   "head": 0.848,
+   "body": 1.019,
+   "headOffset": [
+    -0.267,
+    1.837,
+    -0.133
+   ]
+  }
+ },
+ {
+  "id": "p2_drsimi",
+  "name": "Доктор Сими",
+  "nameEn": "Dr. Simi",
+  "file": "players-v1/p2_drsimi.mdl",
+  "hatScale": {
+   "head": 2.6,
+   "body": 1.233,
+   "headOffset": [
+    1.349,
+    0,
+    0.363
+   ]
+  },
+  "hatScaleOverrides": {
+   "cheburashka": 1.3
+  }
+ },
+ {
+  "id": "p2_fluorite",
+  "name": "Флюорит",
+  "nameEn": "Fluorite",
+  "file": "players-v1/p2_fluorite.mdl",
+  "hatScale": {
+   "head": 0.837,
+   "body": 1.06,
+   "headOffset": [
+    -0.264,
+    3.502,
+    -0.185
+   ]
+  }
+ },
+ {
+  "id": "p2_fnaf",
+  "name": "Фредди Фазбер",
+  "nameEn": "Freddy Fazbear",
+  "file": "players-v1/p2_fnaf.mdl",
+  "hatScale": {
+   "head": 2.259,
+   "body": 1.186
+  }
+ },
+ {
+  "id": "p2_fox",
+  "name": "Фокс Макклауд",
+  "nameEn": "Fox McCloud",
+  "file": "players-v1/p2_fox.mdl",
+  "hatScale": {
+   "head": 1.652,
+   "body": 1.101,
+   "headOffset": [
+    -1.518,
+    1.651,
+    -0.095
+   ]
+  }
+ },
+ {
+  "id": "p2_fubuki",
+  "name": "Фубуки",
+  "nameEn": "Fubuki",
+  "file": "players-v1/p2_fubuki.mdl",
+  "hatScale": {
+   "head": 1.3,
+   "body": 1.26,
+   "headOffset": [
+    -0.35,
+    -1.8,
+    0.3
+   ]
+  },
+  "hatScaleOverrides": {
+   "cheburashka": 0.65
+  }
+ },
+ {
+  "id": "p2_fuji",
+  "name": "Фудзи Кисэки",
+  "nameEn": "Fuji Kiseki",
+  "file": "players-v1/p2_fuji.mdl",
+  "hatScale": {
+   "head": 0.762,
+   "body": 1.102,
+   "headOffset": [
+    -1.508,
+    2.819,
+    -0.092
+   ]
+  }
+ },
+ {
+  "id": "p2_fukua",
+  "name": "Фукуа",
+  "nameEn": "Fukua",
+  "file": "players-v1/p2_fukua.mdl",
+  "hatScale": {
+   "head": 1.5,
+   "body": 1.22,
+   "headOffset": [
+    -0.875,
+    -1.65,
+    0.345
+   ]
+  },
+  "hatScaleOverrides": {
+   "cheburashka": 0.75
+  }
+ },
+ {
+  "id": "p2_hxh01",
+  "name": "Киллуа · светлая футболка",
+  "nameEn": "Killua · light shirt",
+  "file": "players-v1/p2_hxh01.mdl",
+  "hatScale": {
+   "head": 1.646,
+   "body": 1.133
+  }
+ },
+ {
+  "id": "p2_jerry_small",
+  "name": "Джерри · маленький",
+  "nameEn": "Jerry · small",
+  "file": "players-v1/p2_jerry_small.mdl",
+  "hatScale": {
+   "head": 0.55,
+   "body": 0.302,
+   "headOffset": [
+    1,
+    0.24,
+    0.127
+   ]
+  },
+  "hatScaleOverrides": {
+   "cheburashka": 0.275
+  },
+  "previewHeight": 62
+ },
+ {
+  "id": "p2_jessie",
+  "name": "Джесси",
+  "nameEn": "Jessie",
+  "file": "players-v1/p2_jessie.mdl",
+  "hatScale": {
+   "head": 1.42,
+   "body": 1.03,
+   "headOffset": [
+    -1.29,
+    1.184,
+    -0.002
+   ]
+  }
+ },
+ {
+  "id": "p2_jjk1",
+  "name": "Юдзи Итадори",
+  "nameEn": "Yuji Itadori",
+  "file": "players-v1/p2_jjk1.mdl",
+  "hatScale": {
+   "head": 1.094,
+   "body": 1.039
+  }
+ },
+ {
+  "id": "p2_joker",
+  "name": "Джокер · цилиндр",
+  "nameEn": "Joker · top hat",
+  "file": "players-v1/p2_joker.mdl",
+  "hatScale": {
+   "head": 0.98,
+   "body": 1.081
+  }
+ },
+ {
+  "id": "p2_jokerp5",
+  "name": "Джокер · Persona 5",
+  "nameEn": "Joker · Persona 5",
+  "file": "players-v1/p2_jokerp5.mdl",
+  "hatScale": {
+   "head": 0.731,
+   "body": 0.979,
+   "headOffset": [
+    -1.552,
+    0.859,
+    0.03
+   ]
+  }
+ },
+ {
+  "id": "p2_joniscarlet",
+  "name": "Джони Скарлет",
+  "nameEn": "Joni the Scarlet",
+  "file": "players-v1/p2_joniscarlet.mdl",
+  "hatScale": {
+   "head": 0.731,
+   "body": 1.114,
+   "headOffset": [
+    -0.525,
+    2.438,
+    -0.148
+   ]
+  }
+ },
+ {
+  "id": "p2_kasaneteto",
+  "name": "Касане Тето",
+  "nameEn": "Kasane Teto",
+  "file": "players-v1/p2_kasaneteto.mdl",
+  "hatScale": {
+   "head": 1.009,
+   "body": 1.136,
+   "headOffset": [
+    -0.187,
+    1.945,
+    0.096
+   ]
+  }
+ },
+ {
+  "id": "p2_killua",
+  "name": "Киллуа · синяя футболка",
+  "nameEn": "Killua · blue shirt",
+  "file": "players-v1/p2_killua.mdl",
+  "hatScale": {
+   "head": 1.286,
+   "body": 0.939
+  }
+ },
+ {
+  "id": "p2_luffyg5",
+  "name": "Луффи · Гир 5",
+  "nameEn": "Luffy · Gear 5",
+  "file": "players-v1/p2_luffyg5.mdl",
+  "hatScale": {
+   "head": 1.154,
+   "body": 1.075,
+   "headOffset": [
+    -1.398,
+    -0.293,
+    0.115
+   ]
+  }
+ },
+ {
+  "id": "p2_luffy_v2",
+  "name": "Монки Д. Луффи",
+  "nameEn": "Monkey D. Luffy",
+  "file": "players-v1/p2_luffy_v2.mdl",
+  "hatScale": {
+   "head": 1.105,
+   "body": 1.029,
+   "headOffset": [
+    -1.1,
+    2.799,
+    -0.257
+   ]
+  }
+ },
+ {
+  "id": "p2_marihuanin",
+  "name": "Марихуанин",
+  "nameEn": "Marihuanin",
+  "file": "players-v1/p2_marihuanin.mdl",
+  "hatScale": {
+   "head": 1.072,
+   "body": 1.072
+  }
+ },
+ {
+  "id": "p2_martymcfly",
+  "name": "Марти Макфлай",
+  "nameEn": "Marty McFly",
+  "file": "players-v1/p2_martymcfly.mdl",
+  "hatScale": {
+   "head": 1,
+   "body": 1.007
+  },
+  "hatScaleOverrides": {
+   "cheburashka": 0.5
+  }
+ },
+ {
+  "id": "p2_mrfoster",
+  "name": "Мистер Фостер",
+  "nameEn": "Mr. Foster",
+  "file": "players-v1/p2_mrfoster.mdl",
+  "hatScale": {
+   "head": 1.081,
+   "body": 0.998
+  }
+ },
+ {
+  "id": "p2_panther_small",
+  "name": "Розовая пантера · маленькая",
+  "nameEn": "Pink Panther · small",
+  "file": "players-v1/p2_panther_small.mdl",
+  "hatScale": {
+   "head": 0.852,
+   "body": 0.527
+  },
+  "previewHeight": 62
+ },
+ {
+  "id": "p2_peakscout",
+  "name": "Peak Scout",
+  "nameEn": "Peak Scout",
+  "file": "players-v1/p2_peakscout.mdl",
+  "hatScale": {
+   "head": 1.647,
+   "body": 1.098,
+   "headOffset": [
+    -2.312,
+    -0.455,
+    0.497
+   ]
+  }
+ },
+ {
+  "id": "p2_protogen_b3",
+  "name": "Протоген",
+  "nameEn": "Protogen",
+  "file": "players-v1/p2_protogen_b3.mdl",
+  "hatScale": {
+   "head": 1.251,
+   "body": 1.292
+  }
+ },
+ {
+  "id": "p2_reinhard",
+  "name": "Райнхард",
+  "nameEn": "Reinhard",
+  "file": "players-v1/p2_reinhard.mdl",
+  "hatScale": {
+   "head": 1.198,
+   "body": 1.036
+  }
+ },
+ {
+  "id": "p2_ronaldmc_v2",
+  "name": "Рональд Макдональд",
+  "nameEn": "Ronald McDonald",
+  "file": "players-v1/p2_ronaldmc_v2.mdl",
+  "hatScale": {
+   "head": 1.227,
+   "body": 0.985
+  }
+ },
+ {
+  "id": "p2_sassault",
+  "name": "Штурмовик",
+  "nameEn": "Assault Soldier",
+  "file": "players-v1/p2_sassault.mdl",
+  "hatScale": {
+   "head": 1.04,
+   "body": 1.006
+  }
+ },
+ {
+  "id": "p2_scorpion",
+  "name": "Скорпион",
+  "nameEn": "Scorpion",
+  "file": "players-v1/p2_scorpion.mdl",
+  "hatScale": {
+   "head": 0.942,
+   "body": 0.971
+  }
+ },
+ {
+  "id": "p2_skelep",
+  "name": "Скелет-боксёр",
+  "nameEn": "Skeleton Boxer",
+  "file": "players-v1/p2_skelep.mdl",
+  "hatScale": {
+   "head": 1.109,
+   "body": 0.886
+  }
+ },
+ {
+  "id": "p2_slayer01",
+  "name": "Нэдзуко Камадо",
+  "nameEn": "Nezuko Kamado",
+  "file": "players-v1/p2_slayer01.mdl",
+  "hatScale": {
+   "head": 0.805,
+   "body": 1.083,
+   "headOffset": [
+    -1.415,
+    1.598,
+    0.013
+   ]
+  }
+ },
+ {
+  "id": "p2_slayer02",
+  "name": "Тандзиро Камадо",
+  "nameEn": "Tanjiro Kamado",
+  "file": "players-v1/p2_slayer02.mdl",
+  "hatScale": {
+   "head": 0.959,
+   "body": 1.06,
+   "headOffset": [
+    1.165,
+    3.179,
+    -0.017
+   ]
+  }
+ },
+ {
+  "id": "p2_small_gangle",
+  "name": "Гэнгл · маленький",
+  "nameEn": "Gangle · small",
+  "file": "players-v1/p2_small_gangle.mdl",
+  "hatScale": {
+   "head": 0.829,
+   "body": 0.527
+  },
+  "hatScaleOverrides": {
+   "cheburashka": 0.35
+  },
+  "previewHeight": 62
+ },
+ {
+  "id": "p2_spawn",
+  "name": "Спаун",
+  "nameEn": "Spawn",
+  "file": "players-v1/p2_spawn.mdl",
+  "hatScale": {
+   "head": 0.825,
+   "body": 1.045,
+   "headOffset": [
+    -1.467,
+    1.404,
+    0.129
+   ]
+  }
+ },
+ {
+  "id": "p2_squigly",
+  "name": "Сквигли",
+  "nameEn": "Squigly",
+  "file": "players-v1/p2_squigly.mdl",
+  "hatScale": {
+   "head": 1.932,
+   "body": 1.371
+  }
+ },
+ {
+  "id": "p2_subaru",
+  "name": "Субару Нацуки",
+  "nameEn": "Subaru Natsuki",
+  "file": "players-v1/p2_subaru.mdl",
+  "hatScale": {
+   "head": 0.635,
+   "body": 0.99,
+   "headOffset": [
+    -1.423,
+    1.617,
+    -0.397
+   ]
+  }
+ },
+ {
+  "id": "p2_superbuu",
+  "name": "Супер Буу",
+  "nameEn": "Super Buu",
+  "file": "players-v1/p2_superbuu.mdl",
+  "hatScale": {
+   "head": 1.754,
+   "body": 1.059
+  }
+ },
+ {
+  "id": "p2_tetobbrain",
+  "name": "Касане Тето · Birdbrain",
+  "nameEn": "Kasane Teto · Birdbrain",
+  "file": "players-v1/p2_tetobbrain.mdl",
+  "hatScale": {
+   "head": 0.874,
+   "body": 0.951,
+   "headOffset": [
+    -1.157,
+    1.888,
+    0.089
+   ]
+  }
+ },
+ {
+  "id": "p2_thanos",
+  "name": "Танос",
+  "nameEn": "Thanos",
+  "file": "players-v1/p2_thanos.mdl",
+  "hatScale": {
+   "head": 0.893,
+   "body": 0.989,
+   "headOffset": [
+    0.722,
+    1.75,
+    0.334
+   ]
+  }
+ },
+ {
+  "id": "p2_tlizard",
+  "name": "Том · ящерица",
+  "nameEn": "Tom · lizard",
+  "file": "players-v1/p2_tlizard.mdl",
+  "hatScale": {
+   "head": 1.437,
+   "body": 1.03
+  }
+ },
+ {
+  "id": "p2_umas1_v3",
+  "name": "Голд Шип",
+  "nameEn": "Gold Ship",
+  "file": "players-v1/p2_umas1_v3.mdl",
+  "hatScale": {
+   "head": 0.682,
+   "body": 1.04,
+   "headOffset": [
+    -2.296,
+    1.966,
+    -0.057
+   ]
+  }
  }
 ];
 export const playerNamePairs=extraPlayerModels.map(model=>[model.name,model.nameEn]);

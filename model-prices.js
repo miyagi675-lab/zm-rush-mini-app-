@@ -1,5 +1,5 @@
-// Seller prices from ss.txt, matched to the numbered 121-model sheet on 2026-11-17.
-// All amounts are USD per month, including Rat (confirmed by the seller). CT is free.
+// Seller-confirmed USD prices per month. CT is free.
+// Models 1–121: ss.txt (2026-11-17); additions: $10, Jerry Small $100, Panther/Gangle Small $30.
 const monthly = amount => Object.freeze({amount, currency: 'USD', period: 'month'});
 
 export const modelPrices = Object.freeze({
@@ -124,4 +124,58 @@ export const modelPrices = Object.freeze({
   'p_small_silver': monthly(30), // 119. Сильвер · маленький
   'p_small_sonic': monthly(30), // 120. Соник · маленький
   'p_itsuki': monthly(9), // 121. Ицуки
+  'p2_5pb': monthly(10), // 122. 5pb.
+  'p2_ace': monthly(10), // 123. Портгас Д. Эйс
+  'p2_admincs2': monthly(10), // 124. Гоку · Ультраинстинкт
+  'p2_agentp': monthly(10), // 125. Агент Пи
+  'p2_amongus': monthly(10), // 126. Among Us
+  'p2_anmalpc2': monthly(10), // 127. Anmalpc2
+  'p2_artclown': monthly(10), // 128. Клоун Арт
+  'p2_asamitaka': monthly(10), // 129. Аса Митака
+  'p2_billykid': monthly(10), // 130. Билли Кид
+  'p2_chickens_kf': monthly(10), // 131. Чикенатор · Killing Floor
+  'p2_cisrm': monthly(10), // 132. Cisrm
+  'p2_deku': monthly(10), // 133. Deku
+  'p2_denji': monthly(10), // 134. Дэндзи
+  'p2_doom': monthly(10), // 135. Доктор Дум
+  'p2_drsimi': monthly(10), // 136. Доктор Сими
+  'p2_fluorite': monthly(10), // 137. Флюорит
+  'p2_fnaf': monthly(10), // 138. Фредди Фазбер
+  'p2_fox': monthly(10), // 139. Фокс Макклауд
+  'p2_fubuki': monthly(10), // 140. Фубуки
+  'p2_fuji': monthly(10), // 141. Фудзи Кисэки
+  'p2_fukua': monthly(10), // 142. Фукуа
+  'p2_hxh01': monthly(10), // 143. Киллуа · светлая футболка
+  'p2_jerry_small': monthly(100), // 144. Джерри · маленький
+  'p2_jessie': monthly(10), // 145. Джесси
+  'p2_jjk1': monthly(10), // 146. Юдзи Итадори
+  'p2_joker': monthly(10), // 147. Джокер · цилиндр
+  'p2_jokerp5': monthly(10), // 148. Джокер · Persona 5
+  'p2_joniscarlet': monthly(10), // 149. Джони Скарлет
+  'p2_kasaneteto': monthly(10), // 150. Касане Тето
+  'p2_killua': monthly(10), // 151. Киллуа · синяя футболка
+  'p2_luffyg5': monthly(10), // 152. Луффи · Гир 5
+  'p2_luffy_v2': monthly(10), // 153. Монки Д. Луффи
+  'p2_marihuanin': monthly(10), // 154. Марихуанин
+  'p2_martymcfly': monthly(10), // 155. Марти Макфлай
+  'p2_mrfoster': monthly(10), // 156. Мистер Фостер
+  'p2_panther_small': monthly(30), // 157. Розовая пантера · маленькая
+  'p2_peakscout': monthly(10), // 158. Peak Scout
+  'p2_protogen_b3': monthly(10), // 159. Протоген
+  'p2_reinhard': monthly(10), // 160. Райнхард
+  'p2_ronaldmc_v2': monthly(10), // 161. Рональд Макдональд
+  'p2_sassault': monthly(10), // 162. Штурмовик
+  'p2_scorpion': monthly(10), // 163. Скорпион
+  'p2_skelep': monthly(10), // 164. Скелет-боксёр
+  'p2_slayer01': monthly(10), // 165. Нэдзуко Камадо
+  'p2_slayer02': monthly(10), // 166. Тандзиро Камадо
+  'p2_small_gangle': monthly(30), // 167. Гэнгл · маленький
+  'p2_spawn': monthly(10), // 168. Спаун
+  'p2_squigly': monthly(10), // 169. Сквигли
+  'p2_subaru': monthly(10), // 170. Субару Нацуки
+  'p2_superbuu': monthly(10), // 171. Супер Буу
+  'p2_tetobbrain': monthly(10), // 172. Касане Тето · Birdbrain
+  'p2_thanos': monthly(10), // 173. Танос
+  'p2_tlizard': monthly(10), // 174. Том · ящерица
+  'p2_umas1_v3': monthly(10), // 175. Голд Шип
 });
