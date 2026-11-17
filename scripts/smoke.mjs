@@ -170,9 +170,32 @@ async function addToCart(page, count) {
 
 async function assertCardCartButton(card, name, added) {
   const button = card.locator('.card-cart-button');
-  assert.equal(await button.isEnabled(), !added);
-  assert.equal(await button.getAttribute('aria-label'), (added ? 'Уже в корзине: ' : 'Добавить в корзину: ') + name);
+  assert(await button.isEnabled());
+  assert.equal(await button.getAttribute('aria-pressed'), String(added));
+  assert.equal(await button.getAttribute('aria-label'), (added ? 'Убрать из корзины: ' : 'Добавить в корзину: ') + name);
   return button;
+}
+
+async function assertDesktopCartButton(page, tab, cardSelector) {
+  await page.locator(tab).click();
+  const card = page.locator(cardSelector).first();
+  const button = card.locator('.card-cart-button');
+  await button.waitFor({state: 'visible'});
+  const fits = await button.evaluate(element => {
+    const buttonRect = element.getBoundingClientRect();
+    const cardRect = element.closest('article').getBoundingClientRect();
+    return buttonRect.bottom <= cardRect.bottom && buttonRect.right <= cardRect.right;
+  });
+  assert(fits, 'The cart button must fit fully inside the desktop card: ' + cardSelector);
+  const pick = card.locator('.model-pick, .item-pick');
+  const initialSelection = await pick.getAttribute('aria-pressed');
+  await button.click();
+  await assertCartCount(page, 1);
+  assert.equal(await button.getAttribute('aria-pressed'), 'true');
+  await button.click();
+  await assertCartCount(page, 0);
+  assert.equal(await button.getAttribute('aria-pressed'), 'false');
+  assert.equal(await pick.getAttribute('aria-pressed'), initialSelection);
 }
 
 async function addFromCard(page, card, name, count) {
@@ -254,6 +277,9 @@ try {
       assert.equal(await page.locator('#pause').getAttribute('aria-pressed'), 'false');
       assert.equal(await retry.isVisible(), false);
       assert(await page.evaluate(() => window.swipesDisabled));
+      await assertDesktopCartButton(page, '#tab-hats', '#items article');
+      await assertDesktopCartButton(page, '#tab-models', '#model-items article');
+      await assertDesktopCartButton(page, '#tab-weapons', '#weapon-items article');
       await page.locator('#tab-weapons').click();
       await page.locator('#weapons-panel').waitFor({state: 'visible'});
       const weapon = page.locator('[data-weapon-id="ak-47-dollar"] .item-pick');

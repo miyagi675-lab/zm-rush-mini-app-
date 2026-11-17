@@ -1,6 +1,6 @@
 import {Box3, Matrix4, Vector3} from './vendor/three.module.js';
 import {createPreviewLoader} from './preview-loader.js?v=1';
-import {productPrice} from './purchase.js?v=9';
+import {productPrice} from './purchase.js?v=10';
 import {weapons} from './weapon-catalog.js?v=4';
 
 export function prepareWeapon(model, entry) {

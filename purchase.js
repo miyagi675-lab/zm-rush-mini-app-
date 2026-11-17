@@ -80,11 +80,16 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     saveCart();
   }
 
+  function removeProduct(key) {
+    cart = cart.filter(entry => productKey(entry) !== key);
+    saveCart();
+  }
+
   function updateCardCartButton(button) {
     const inCart = cartKeys.has(button.dataset.cartKey);
-    const label = (inCart ? 'Уже в корзине: ' : 'Добавить в корзину: ') + button.dataset.productName;
-    button.disabled = inCart;
-    button.lastElementChild.textContent = inCart ? '✓' : '+';
+    const label = (inCart ? 'Убрать из корзины: ' : 'Добавить в корзину: ') + button.dataset.productName;
+    button.setAttribute('aria-pressed', String(inCart));
+    button.lastElementChild.textContent = inCart ? '−' : '+';
     button.setAttribute('aria-label', label);
     button.title = label;
   }
@@ -98,7 +103,8 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     button.append(cardCartIcon.content.cloneNode(true));
     button.onclick = event => {
       event.stopPropagation();
-      addProduct(product);
+      if (cartKeys.has(button.dataset.cartKey)) removeProduct(button.dataset.cartKey);
+      else addProduct(product);
     };
     updateCardCartButton(button);
     return button;
@@ -122,8 +128,7 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
       remove.dataset.cartRemove = productKey(product);
       remove.textContent = 'Убрать из корзины';
       remove.onclick = () => {
-        cart = cart.filter(entry => productKey(entry) !== productKey(product));
-        saveCart();
+        removeProduct(productKey(product));
         const next = items.querySelector('[data-cart-remove]') || document.getElementById('cart-close');
         next.focus();
       };
