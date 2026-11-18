@@ -40,7 +40,7 @@ const favorites=new Set(readJSON('zm-rush-favorites',[]));
 const slots=readJSON('zm-rush-slots',{a:null,b:null});
 let ct,hat,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filter='all',ready=false,modelBrowser=null;
 let player=playerModels.find(m=>m.id===readJSON('zm-rush-player','gign'))||playerModels[0],modelHeight=62,modelHead=new T.Vector3(0,56,0),playerTicket=0;
-let animatedFraming;
+let animatedFraming, crouchedFraming;
 const motionSelect = $('motion');
 const motionGroups = new Map();
 for (const definition of motionDefinitions) {
@@ -276,13 +276,15 @@ function setMotion(value) {
 }
 const appliedPose = {player:null, hat:null, weapon:null, motion:null, time:null, resolution:null};
 const animatedHead = new T.Vector3(), headShift = new T.Vector3();
+const posture = value => value === 'static' ? 'static' : value?.startsWith('crouch') ? 'crouch' : 'standing';
 function placePlayer(previousMotion) {
   const close = isClose();
   const previousTarget = previousMotion === null ? null : viewTarget(close);
-  const metrics = motion === 'static' ? measureMDLPose(ct) : animatedFraming;
+  const metrics = motion === 'static' ? measureMDLPose(ct)
+    : posture(motion) === 'crouch' ? crouchedFraming || animatedFraming : animatedFraming;
   rig.position.y = platformTop - metrics.floor;
   rig.updateMatrixWorld(true);
-  modelHeight = metrics.height;
+  modelHeight = motion === 'static' ? metrics.height : animatedFraming.height;
   modelHead.copy(metrics.head).applyMatrix4(rig.matrixWorld);
   if (previousTarget) {
     const shift = viewTarget(close).sub(previousTarget);
@@ -308,7 +310,7 @@ function updateAnimation(delta) {
     syncMotionControls();
   }
   const previousMotion = appliedPose.player === ct ? appliedPose.motion : null;
-  if (previousMotion === null || (previousMotion === 'static') !== (motion === 'static')) placePlayer(previousMotion);
+  if (previousMotion === null || posture(previousMotion) !== posture(motion)) placePlayer(previousMotion);
   const head = ct.userData.bones.get('Bip01 Head');
   if (head) {
     animatedHead.setFromMatrixPosition(head).applyMatrix4(rig.matrixWorld);
@@ -380,11 +382,21 @@ async function choosePlayer(id,initial=false){
   ensureHead(next,nextPlayer.headAttachment);
   next.userData.updatePose(1,0);
   const nextFraming = measureMDLPose(next);
+  const crouch = resolveMotion(next.userData.sequences, 'crouch_idle');
+  let nextCrouchedFraming = null;
+  if (crouch.supported) {
+    // GoldSrc lowers the player's origin for the crouched hull. Anchor that
+    // posture once instead of re-grounding every frame and cancelling jumps.
+    applyMotionPose(next, crouch, 0);
+    nextCrouchedFraming = measureMDLPose(next);
+    next.userData.updatePose(1,0);
+  }
   if(current){const lookup=fittedHat(current,body,nextPlayer);nextHat=lookup.cached;if(!nextHat){nextHat=parseMDL(await load('hats/'+current.id+'.mdl'),next.userData.bones,0,body,hatScaleFor(nextPlayer,current),indexedMesh);fittedHats.set(lookup.key,nextHat);}}
   if(token!==playerTicket || !sceneAvailable)return false;
   if(hat)rig.remove(hat);if(ct)rig.remove(ct);
   ct=next;hat=nextHat;player=nextPlayer;appliedPose.player=null;rig.add(ct);if(hat)rig.add(hat);trimHats();trimPlayers();
   animatedFraming=nextFraming;
+  crouchedFraming=nextCrouchedFraming;
   animationTime=0;ready=true;
   if (animationFinished) animationPlaying=motion!=='static';
   animationFinished=false;
