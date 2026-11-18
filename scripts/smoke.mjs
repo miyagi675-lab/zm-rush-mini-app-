@@ -73,6 +73,7 @@ async function newPage(width, height) {
     window.studioPoseWrites = 0;
     window.studioInvalidFloats = false;
     window.studioTrackedPose = null;
+    window.studioPoseLastUpload = null;
     for (const method of ['drawArrays', 'drawElements']) {
       const draw = WebGL2RenderingContext.prototype[method];
       WebGL2RenderingContext.prototype[method] = function (...args) {
@@ -90,6 +91,7 @@ async function newPage(width, height) {
           // Dynamic uploads come from the displayed player mesh. Retain one
           // actual GPU source array to observe pose changes without app state.
           if (method === 'bufferSubData' && !window.studioTrackedPose) window.studioTrackedPose = data;
+          if (data === window.studioTrackedPose) window.studioPoseLastUpload = performance.now();
         }
         return upload.apply(this, args);
       };
@@ -310,25 +312,32 @@ async function assertMotionActions(page) {
     };
     const started = performance.now();
     const changes = [{at: 0, signature: signature()}];
+    const restarts = [];
+    let lastUpload = window.studioPoseLastUpload ?? started;
     while (performance.now() - started < milliseconds) {
       await frame();
       const next = signature();
       if (next !== changes.at(-1).signature) changes.push({at: performance.now() - started, signature: next});
+      const uploaded = window.studioPoseLastUpload;
+      if (uploaded !== null && uploaded > lastUpload) {
+        // Authored constant-pose frames still upload geometry. A genuine
+        // end-of-clip hold stops uploads until the next performance begins.
+        if (uploaded - lastUpload > 500) restarts.push(uploaded - started);
+        lastUpload = uploaded;
+      }
     }
-    return changes;
+    return {changes, restarts};
   }, milliseconds);
-  const assertRepeating = async (action, milliseconds = 4400) => {
+  const assertRepeating = async action => {
     await select(action);
-    const changes = await observeGeometry(milliseconds);
+    const {changes, restarts} = await observeGeometry(7900);
     assert(changes[0].signature !== null, 'The rendered mesh must be available for ' + action);
-    const starts = [changes[0].at];
-    for (let i = 1; i < changes.length; i++) {
-      // A repeated action holds its final frame between performances.
-      if (changes[i].at - changes[i - 1].at > 500) starts.push(changes[i].at);
-    }
-    assert(starts.length >= (milliseconds > 7000 ? 3 : 2), action + ' must visibly restart automatically: ' + JSON.stringify(changes));
-    for (let i = 1; i < starts.length; i++) {
-      const interval = starts[i] - starts[i - 1];
+    assert(restarts.length >= 2, action + ' must restart after two genuine end-of-clip holds: ' + JSON.stringify({changes, restarts}));
+    assert(changes.some(change => change.at >= restarts[0] && change.at < restarts[1]), action + ' must visibly move during its repeated performance');
+    // The first observation can begin part-way into an action; compare actual
+    // restart edges only, never that partial initial interval.
+    for (let i = 1; i < restarts.length; i++) {
+      const interval = restarts[i] - restarts[i - 1];
       assert(interval >= 3000 && interval <= 4100, action + ' repeat interval must remain about 3.5 seconds: ' + interval);
     }
     assert.equal(await pauseMotion.getAttribute('aria-pressed'), 'false');
@@ -349,17 +358,18 @@ async function assertMotionActions(page) {
   const beforeResume = await page.evaluate(() => window.studioPoseWrites);
   await page.waitForFunction(before => window.studioPoseWrites > before, beforeResume);
 
-  for (const action of ['jump', 'longjump', 'reload', 'shoot']) await assertRepeating(action, action === 'shoot' ? 7900 : 4400);
+  for (const action of ['jump', 'longjump', 'reload', 'shoot']) await assertRepeating(action);
 
   await pauseMotion.click();
   await showStudio();
-  const pausedChanges = await observeGeometry(3800);
+  const {changes: pausedChanges, restarts: pausedRestarts} = await observeGeometry(3800);
   assert.equal(pausedChanges.length, 1, 'Pause must freeze the repeat countdown across a full interval');
+  assert.equal(pausedRestarts.length, 0);
   await assertPoseStopped();
   await replay.click();
   await showStudio();
   assert.equal(await pauseMotion.getAttribute('aria-pressed'), 'false', 'Manual replay must resume a repeating action');
-  const restarted = await observeGeometry(250);
+  const {changes: restarted} = await observeGeometry(250);
   assert(restarted.some(item => item.signature !== pausedChanges[0].signature), 'Manual replay must visibly restart the action');
 
   await select('death1');

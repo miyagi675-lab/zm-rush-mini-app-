@@ -127,6 +127,15 @@ test('a slow long clip completes fully; a zero-step snapshot or pause never rest
   assert.deepEqual(advanceMotionClock(slow, clock, .1, .5), {time: 0, cycleTime: 0});
 });
 
+test('sparse rendered frames keep the repeat clock in real seconds', () => {
+  const shot = resolveMotion(sequences, 'shoot');
+  let clock = {time: 0, cycleTime: 0};
+  for (let frame = 0; frame < 6; frame++) clock = advanceMotionClock(shot, clock, .5);
+  assert.equal(clock.cycleTime, 3);
+  assert.equal(clock.time, shot.duration);
+  assert.deepEqual(advanceMotionClock(shot, clock, .5), {time: 0, cycleTime: 0});
+});
+
 test('loops repeat safely and invalid clocks never propagate nonfinite pose times', () => {
   const walk = resolveMotion(sequences, 'walk');
   const half = walk.duration / 2;

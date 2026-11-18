@@ -295,10 +295,11 @@ function placePlayer(previousMotion) {
     camera.position.add(shift);
   }
 }
-function updateAnimation(delta) {
+function updateAnimation(delta, elapsed = delta) {
   if (!ready || !ct?.userData.updatePose) return;
   if (animationPlaying) {
-    const clock = advanceMotionClock(resolvedMotion, {time: animationTime, cycleTime: animationCycleTime}, delta, animationSpeed);
+    const step = resolvedMotion?.playback === 'repeat' ? elapsed : delta;
+    const clock = advanceMotionClock(resolvedMotion, {time: animationTime, cycleTime: animationCycleTime}, step, animationSpeed);
     animationTime = clock.time;
     animationCycleTime = clock.cycleTime;
   }
@@ -344,9 +345,10 @@ function startPreviewLoop(viewport) {
   let previous = null;
 
   function draw(now) {
-    const delta = previous === null ? 0 : Math.min((now - previous) / 1000, .1);
+    const elapsed = previous === null ? 0 : Math.max(0, (now - previous) / 1000);
+    const delta = Math.min(elapsed, .1);
     previous = now;
-    updateAnimation(delta);
+    updateAnimation(delta, elapsed);
     controls.update(delta);
     renderer.render(scene, camera);
   }
