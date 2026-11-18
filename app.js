@@ -11,7 +11,7 @@ import {modelPrices} from './model-prices.js?v=4';
 import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=12';
 import {hatPrices} from './hat-prices.js?v=1';
 import {weapons} from './weapon-catalog.js?v=4';
-import {motionDefinitions,resolveMotion,applyMotionPose} from './motion.js?v=1';
+import {motionDefinitions,resolveMotion,applyMotionPose,advanceMotionClock} from './motion.js?v=2';
 
 const $=id=>document.getElementById(id);
 const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГОЕ'};
@@ -61,7 +61,7 @@ const storedMotion = readJSON('zm-rush-motion', null);
 let motion = [...motionSelect.options].some(option => option.value === storedMotion)
   ? storedMotion
   : motionSelect.querySelector('option[selected]').value;
-let activeSlot='a',animationTime=0,animationSpeed=1,animationPlaying=true,cameraView='angle';
+let activeSlot='a',animationTime=0,animationCycleTime=0,animationSpeed=1,animationPlaying=true,cameraView='angle';
 let resolvedMotion = null, animationFinished = false;
 let sceneAvailable = false;
 let selectionBusy = false;
@@ -225,6 +225,7 @@ async function selectWeapon(entry, purchaseWeapon = true) {
     }
     if (animationFinished) animationPlaying = motion !== 'static';
     animationTime = 0;
+    animationCycleTime = 0;
     animationFinished = false;
     refreshMotionOptions();
     updateAnimation(0);
@@ -270,6 +271,7 @@ function setMotion(value) {
   motion = motionDefinitions.some(item => item.id === value) ? value : 'run';
   motionSelect.value = motion;
   animationTime = 0;
+  animationCycleTime = 0;
   animationFinished = false;
   animationPlaying = motion !== 'static';
   refreshMotionOptions();
@@ -280,11 +282,12 @@ const posture = value => value === 'static' ? 'static' : value?.startsWith('crou
 function placePlayer(previousMotion) {
   const close = isClose();
   const previousTarget = previousMotion === null ? null : viewTarget(close);
-  const metrics = motion === 'static' ? measureMDLPose(ct)
-    : posture(motion) === 'crouch' ? crouchedFraming || animatedFraming : animatedFraming;
+  const effectiveMotion = resolvedMotion.definition.id;
+  const metrics = effectiveMotion === 'static' ? measureMDLPose(ct)
+    : posture(effectiveMotion) === 'crouch' ? crouchedFraming || animatedFraming : animatedFraming;
   rig.position.y = platformTop - metrics.floor;
   rig.updateMatrixWorld(true);
-  modelHeight = motion === 'static' ? metrics.height : animatedFraming.height;
+  modelHeight = effectiveMotion === 'static' ? metrics.height : animatedFraming.height;
   modelHead.copy(metrics.head).applyMatrix4(rig.matrixWorld);
   if (previousTarget) {
     const shift = viewTarget(close).sub(previousTarget);
@@ -294,7 +297,11 @@ function placePlayer(previousMotion) {
 }
 function updateAnimation(delta) {
   if (!ready || !ct?.userData.updatePose) return;
-  if (animationPlaying) animationTime += delta*animationSpeed;
+  if (animationPlaying) {
+    const clock = advanceMotionClock(resolvedMotion, {time: animationTime, cycleTime: animationCycleTime}, delta, animationSpeed);
+    animationTime = clock.time;
+    animationCycleTime = clock.cycleTime;
+  }
 
   const motionChanged = appliedPose.player !== ct || appliedPose.motion !== motion || appliedPose.resolution !== resolvedMotion;
   if (!motionChanged && appliedPose.time === animationTime &&
@@ -309,8 +316,8 @@ function updateAnimation(delta) {
     animationPlaying = false;
     syncMotionControls();
   }
-  const previousMotion = appliedPose.player === ct ? appliedPose.motion : null;
-  if (previousMotion === null || posture(previousMotion) !== posture(motion)) placePlayer(previousMotion);
+  const previousMotion = appliedPose.player === ct ? appliedPose.resolution?.definition.id : null;
+  if (previousMotion == null || posture(previousMotion) !== posture(resolvedMotion.definition.id)) placePlayer(previousMotion ?? null);
   const head = ct.userData.bones.get('Bip01 Head');
   if (head) {
     animatedHead.setFromMatrixPosition(head).applyMatrix4(rig.matrixWorld);
@@ -398,6 +405,7 @@ async function choosePlayer(id,initial=false){
   animatedFraming=nextFraming;
   crouchedFraming=nextCrouchedFraming;
   animationTime=0;ready=true;
+  animationCycleTime=0;
   if (animationFinished) animationPlaying=motion!=='static';
   animationFinished=false;
   refreshMotionOptions();

@@ -7,15 +7,13 @@ const definitions = [
   ['run', 'Бег', 'Основные движения', 'loop'],
   ['crouch_idle', 'Приседание', 'Основные движения', 'loop'],
   ['crouchrun', 'Ходьба сидя', 'Основные движения', 'loop'],
-  ['jump', 'Прыжок', 'Основные движения', 'once'],
-  ['longjump', 'Длинный прыжок', 'Основные движения', 'once'],
+  ['jump', 'Прыжок', 'Основные движения', 'repeat'],
+  ['longjump', 'Длинный прыжок', 'Основные движения', 'repeat'],
   ['swim', 'Плавание', 'Основные движения', 'loop'],
   ['treadwater', 'На воде', 'Основные движения', 'loop'],
   ['aim', 'Прицеливание', 'Действия с оружием', 'loop'],
-  ['shoot', 'Стрельба / удар', 'Действия с оружием', 'once'],
-  ['reload', 'Перезарядка', 'Действия с оружием', 'once'],
-  ['flinch', 'Попадание в корпус', 'Реакции', 'once'],
-  ['head_flinch', 'Попадание в голову', 'Реакции', 'once'],
+  ['shoot', 'Стрельба / удар', 'Действия с оружием', 'repeat'],
+  ['reload', 'Перезарядка', 'Действия с оружием', 'repeat'],
   ['death1', 'Падение · 1', 'Реакции', 'once'],
   ['death2', 'Падение · 2', 'Реакции', 'once'],
   ['death3', 'Падение · 3', 'Реакции', 'once'],
@@ -35,8 +33,6 @@ const aliases = {
   longjump: ['longjump', 'long_jump'],
   swim: ['swim', 'swim1'],
   treadwater: ['treadwater', 'tread_water', 'swim_idle'],
-  flinch: ['gut_flinch', 'flinch', 'body_flinch'],
-  head_flinch: ['head_flinch', 'headflinch'],
   death1: ['death1', 'death_1', 'death01', 'death'],
   death2: ['death2', 'death_2', 'death02'],
   death3: ['death3', 'death_3', 'death03'],
@@ -68,7 +64,8 @@ export function resolveMotion(sequences, motion, weapon = null) {
   const definition = byId.get(motion);
   const result = {supported: false, definition: definition || null, sequence: null,
     sequenceIndex: null, duration: 0, playback: definition?.playback || 'static',
-    loop: definition?.playback === 'loop', reason: definition ? 'missing-sequence' : 'unknown-motion'};
+    loop: definition?.playback === 'loop', repeatInterval: definition?.playback === 'repeat' ? 3.5 : 0,
+    reason: definition ? 'missing-sequence' : 'unknown-motion'};
   if (!definition || !Array.isArray(sequences)) return result;
 
   let sequence;
@@ -98,8 +95,26 @@ export function motionPlayback(resolved, elapsed = 0) {
   const time = Number.isFinite(elapsed) ? Math.max(0, elapsed) : 0;
   const duration = resolved.duration;
   if (resolved.playback === 'static') return {time: 0, finished: false};
-  if (resolved.playback === 'once') return {time: Math.min(time, duration), finished: time >= duration};
+  if (resolved.playback === 'once' || resolved.playback === 'repeat') {
+    return {time: Math.min(time, duration), finished: resolved.playback === 'once' && time >= duration};
+  }
   return {time: duration > 0 ? time % duration : 0, finished: false};
+}
+
+// The repeat interval runs in unscaled preview seconds. Animation speed changes
+// only the clip; pause and an offscreen preview freeze both clocks. Wait for
+// long clips to finish before restarting, and retain their final frame once.
+export function advanceMotionClock(resolved, clock, delta = 0, speed = 1) {
+  const step = Number.isFinite(delta) ? Math.max(0, delta) : 0;
+  const rate = Number.isFinite(speed) && speed > 0 ? speed : 1;
+  const current = motionPlayback(resolved, clock?.time).time;
+  if (!resolved?.supported || resolved.playback === 'static') return {time: 0, cycleTime: 0};
+  if (resolved.playback !== 'repeat') return {time: motionPlayback(resolved, current + step * rate).time, cycleTime: 0};
+  const cycleTime = Number.isFinite(clock?.cycleTime) ? Math.max(0, clock.cycleTime) : 0;
+  if (step > 0 && current >= resolved.duration && cycleTime + step >= resolved.repeatInterval) {
+    return {time: 0, cycleTime: 0};
+  }
+  return {time: Math.min(current + step * rate, resolved.duration), cycleTime: cycleTime + step};
 }
 
 // Some CT attacks are flagged as looping in the original MDL. Override the flag

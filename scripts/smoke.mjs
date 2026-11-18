@@ -72,6 +72,7 @@ async function newPage(width, height) {
     window.studioDraws = 0;
     window.studioPoseWrites = 0;
     window.studioInvalidFloats = false;
+    window.studioTrackedPose = null;
     for (const method of ['drawArrays', 'drawElements']) {
       const draw = WebGL2RenderingContext.prototype[method];
       WebGL2RenderingContext.prototype[method] = function (...args) {
@@ -86,6 +87,9 @@ async function newPage(width, height) {
         if (this.canvas.parentElement?.id === 'viewport' && data instanceof Float32Array) {
           window.studioPoseWrites++;
           for (const value of data) if (!Number.isFinite(value)) window.studioInvalidFloats = true;
+          // Dynamic uploads come from the displayed player mesh. Retain one
+          // actual GPU source array to observe pose changes without app state.
+          if (method === 'bufferSubData' && !window.studioTrackedPose) window.studioTrackedPose = data;
         }
         return upload.apply(this, args);
       };
@@ -263,7 +267,8 @@ async function assertMotionActions(page) {
   const motion = page.locator('#motion');
   const pauseMotion = page.locator('#pause');
   const replay = page.locator('#replay-motion');
-  assert.equal(await motion.locator('option').count(), 19);
+  assert.equal(await motion.locator('option').count(), 17);
+  assert.equal(await motion.locator('option[value="flinch"], option[value="head_flinch"]').count(), 0);
   assert.equal(await motion.locator('option:disabled').count(), 0, 'CT must offer every catalog action');
   assert.equal(await motion.locator('optgroup').count(), 3);
 
@@ -293,6 +298,42 @@ async function assertMotionActions(page) {
     assert.equal(await pauseMotion.getAttribute('aria-pressed'), 'true');
     await assertPoseStopped();
   };
+  const observeGeometry = milliseconds => page.evaluate(async milliseconds => {
+    const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+    const signature = () => {
+      const data = window.studioTrackedPose;
+      if (!data) return null;
+      let hash = 2166136261;
+      const stride = Math.max(1, Math.floor(data.length / 128));
+      for (let i = 0; i < data.length; i += stride) hash = Math.imul(hash ^ Math.round(data[i] * 10000), 16777619);
+      return hash >>> 0;
+    };
+    const started = performance.now();
+    const changes = [{at: 0, signature: signature()}];
+    while (performance.now() - started < milliseconds) {
+      await frame();
+      const next = signature();
+      if (next !== changes.at(-1).signature) changes.push({at: performance.now() - started, signature: next});
+    }
+    return changes;
+  }, milliseconds);
+  const assertRepeating = async (action, milliseconds = 4400) => {
+    await select(action);
+    const changes = await observeGeometry(milliseconds);
+    assert(changes[0].signature !== null, 'The rendered mesh must be available for ' + action);
+    const starts = [changes[0].at];
+    for (let i = 1; i < changes.length; i++) {
+      // A repeated action holds its final frame between performances.
+      if (changes[i].at - changes[i - 1].at > 500) starts.push(changes[i].at);
+    }
+    assert(starts.length >= (milliseconds > 7000 ? 3 : 2), action + ' must visibly restart automatically: ' + JSON.stringify(changes));
+    for (let i = 1; i < starts.length; i++) {
+      const interval = starts[i] - starts[i - 1];
+      assert(interval >= 3000 && interval <= 4100, action + ' repeat interval must remain about 3.5 seconds: ' + interval);
+    }
+    assert.equal(await pauseMotion.getAttribute('aria-pressed'), 'false');
+    assert.equal(await pauseMotion.textContent(), 'Пауза');
+  };
 
   await page.locator('#speed').selectOption('1.5');
   await select('crouch_idle');
@@ -308,13 +349,24 @@ async function assertMotionActions(page) {
   const beforeResume = await page.evaluate(() => window.studioPoseWrites);
   await page.waitForFunction(before => window.studioPoseWrites > before, beforeResume);
 
-  for (const action of ['jump', 'reload', 'death1']) {
-    await select(action);
-    await ended();
-    await replay.click();
-    await showStudio();
-    await ended();
-  }
+  for (const action of ['jump', 'longjump', 'reload', 'shoot']) await assertRepeating(action, action === 'shoot' ? 7900 : 4400);
+
+  await pauseMotion.click();
+  await showStudio();
+  const pausedChanges = await observeGeometry(3800);
+  assert.equal(pausedChanges.length, 1, 'Pause must freeze the repeat countdown across a full interval');
+  await assertPoseStopped();
+  await replay.click();
+  await showStudio();
+  assert.equal(await pauseMotion.getAttribute('aria-pressed'), 'false', 'Manual replay must resume a repeating action');
+  const restarted = await observeGeometry(250);
+  assert(restarted.some(item => item.signature !== pausedChanges[0].signature), 'Manual replay must visibly restart the action');
+
+  await select('death1');
+  await ended();
+  await replay.click();
+  await showStudio();
+  await ended();
   assert.equal(await page.evaluate(() => window.studioInvalidFloats), false, 'Animation positions and normals must stay finite');
 
   await page.locator('[data-language="en"]').click();
@@ -343,7 +395,7 @@ async function assertMotionActions(page) {
   assert.match(await page.locator('#motion-status').textContent(), /Для ножа перезарядка недоступна/);
   await select('shoot');
   assert.equal(await page.locator('#motion-status').isVisible(), false);
-  await ended();
+  await assertRepeating('shoot');
   assert.equal(await page.evaluate(() => window.studioInvalidFloats), false);
 }
 
@@ -597,8 +649,12 @@ try {
   for (const width of [1280, 390]) {
     const {page, context, errors, requestFailures} = await newPage(width, 844);
     try {
+      await page.addInitScript(removed => {
+        if (localStorage.getItem('zm-rush-motion') === null) localStorage.setItem('zm-rush-motion', JSON.stringify(removed));
+      }, width === 1280 ? 'flinch' : 'head_flinch');
       await page.goto(origin + mount);
       await loadOk(page);
+      assert.equal(await page.locator('#motion').inputValue(), 'run', 'A saved removed reaction must safely fall back to running');
       await assertMotionActions(page);
       assert.deepEqual(errors, []);
       assert.deepEqual(requestFailures, []);
