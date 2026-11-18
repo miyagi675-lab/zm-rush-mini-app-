@@ -48,6 +48,8 @@ const origin = 'http://127.0.0.1:' + server.address().port;
 const models = '#model-items .model-pick';
 const pause = '#snapshot';
 const defaultModel = /\/assets\/(?:(?:web-v2|player-motion-v1)\/)?gign\.mdl(?:\.gz)?(?:\?|$)/;
+const motionOnly = process.argv.includes('--motion-only');
+const motionWidth = Number(process.argv.find(arg => arg.startsWith('--motion-width='))?.split('=')[1]);
 let browser;
 
 async function newPage(width, height) {
@@ -70,10 +72,26 @@ async function newPage(width, height) {
   const page = await context.newPage();
   await page.addInitScript(() => {
     window.studioDraws = 0;
+    window.studioRenderFrames = 0;
     window.studioPoseWrites = 0;
     window.studioInvalidFloats = false;
     window.studioTrackedPose = null;
     window.studioPoseLastUpload = null;
+    window.studioMotionGeneration = 0;
+    window.studioMotionChangedAt = performance.now();
+    window.studioPoseUploadHistory = [];
+    document.addEventListener('change', event => {
+      if (event.target?.id !== 'motion') return;
+      window.studioMotionGeneration++;
+      window.studioMotionChangedAt = performance.now();
+      window.studioPoseLastUpload = null;
+      window.studioPoseUploadHistory = [];
+    }, true);
+    const clear = WebGL2RenderingContext.prototype.clear;
+    WebGL2RenderingContext.prototype.clear = function (...args) {
+      if (this.canvas.parentElement?.id === 'viewport') window.studioRenderFrames++;
+      return clear.apply(this, args);
+    };
     for (const method of ['drawArrays', 'drawElements']) {
       const draw = WebGL2RenderingContext.prototype[method];
       WebGL2RenderingContext.prototype[method] = function (...args) {
@@ -91,7 +109,12 @@ async function newPage(width, height) {
           // Dynamic uploads come from the displayed player mesh. Retain one
           // actual GPU source array to observe pose changes without app state.
           if (method === 'bufferSubData' && !window.studioTrackedPose) window.studioTrackedPose = data;
-          if (data === window.studioTrackedPose) window.studioPoseLastUpload = performance.now();
+          if (data === window.studioTrackedPose) {
+            window.studioPoseLastUpload = performance.now();
+            window.studioPoseUploadHistory.push({at: window.studioPoseLastUpload, frames: window.studioRenderFrames,
+              generation: window.studioMotionGeneration});
+            if (window.studioPoseUploadHistory.length > 2048) window.studioPoseUploadHistory.shift();
+          }
         }
         return upload.apply(this, args);
       };
@@ -312,33 +335,36 @@ async function assertMotionActions(page) {
     };
     const started = performance.now();
     const changes = [{at: 0, signature: signature()}];
-    const restarts = [];
-    let lastUpload = window.studioPoseLastUpload ?? started;
+    const scope = {generation: window.studioMotionGeneration, changedAt: window.studioMotionChangedAt,
+      motion: document.getElementById('motion').value, started, lastUploadAtStart: window.studioPoseLastUpload};
     while (performance.now() - started < milliseconds) {
       await frame();
       const next = signature();
       if (next !== changes.at(-1).signature) changes.push({at: performance.now() - started, signature: next});
-      const uploaded = window.studioPoseLastUpload;
-      if (uploaded !== null && uploaded > lastUpload) {
-        // Authored constant-pose frames still upload geometry. A genuine
-        // end-of-clip hold stops uploads until the next performance begins.
-        if (uploaded - lastUpload > 500) restarts.push(uploaded - started);
-        lastUpload = uploaded;
-      }
     }
-    return {changes, restarts};
+    const uploads = window.studioPoseUploadHistory.filter(event => event.generation === scope.generation);
+    const restarts = [];
+    for (let i = 1; i < uploads.length; i++) {
+      const previous = uploads[i - 1], current = uploads[i];
+      // A genuine end hold keeps drawing the studio without uploading a pose.
+      // Exclude shader stalls/offscreen gaps where rendering also stopped.
+      if (current.at >= started && current.at - previous.at > 500 && current.frames - previous.frames >= 3) restarts.push(current.at - started);
+    }
+    return {changes, restarts, scope, uploads: uploads.map(event => ({at: event.at - started, frames: event.frames}))};
   }, milliseconds);
   const assertRepeating = async action => {
     await select(action);
-    const {changes, restarts} = await observeGeometry(7900);
+    const observed = await observeGeometry(7900);
+    const {changes, restarts} = observed;
+    const diagnostic = () => JSON.stringify({scope: observed.scope, restarts, changes, uploads: observed.uploads});
     assert(changes[0].signature !== null, 'The rendered mesh must be available for ' + action);
-    assert(restarts.length >= 2, action + ' must restart after two genuine end-of-clip holds: ' + JSON.stringify({changes, restarts}));
+    assert(restarts.length >= 2, action + ' must restart after two genuine end-of-clip holds: ' + diagnostic());
     assert(changes.some(change => change.at >= restarts[0] && change.at < restarts[1]), action + ' must visibly move during its repeated performance');
     // The first observation can begin part-way into an action; compare actual
     // restart edges only, never that partial initial interval.
     for (let i = 1; i < restarts.length; i++) {
       const interval = restarts[i] - restarts[i - 1];
-      assert(interval >= 3000 && interval <= 4100, action + ' repeat interval must remain about 3.5 seconds: ' + interval);
+      assert(interval >= 3000 && interval <= 4100, action + ' repeat interval must remain about 3.5 seconds: ' + interval + ' ' + diagnostic());
     }
     assert.equal(await pauseMotion.getAttribute('aria-pressed'), 'false');
     assert.equal(await pauseMotion.textContent(), 'Пауза');
@@ -409,12 +435,34 @@ async function assertMotionActions(page) {
   assert.equal(await page.evaluate(() => window.studioInvalidFloats), false);
 }
 
+async function assertMotionPages() {
+  const widths = motionWidth > 0 ? [motionWidth] : [1280, 390];
+  for (const width of widths) {
+    const {page, context, errors, requestFailures} = await newPage(width, 844);
+    try {
+      await page.addInitScript(removed => {
+        if (localStorage.getItem('zm-rush-motion') === null) localStorage.setItem('zm-rush-motion', JSON.stringify(removed));
+      }, width === 1280 ? 'flinch' : 'head_flinch');
+      await page.goto(origin + mount);
+      await loadOk(page);
+      assert.equal(await page.locator('#motion').inputValue(), 'run', 'A saved removed reaction must safely fall back to running');
+      await assertMotionActions(page);
+      assert.deepEqual(errors, []);
+      assert.deepEqual(requestFailures, []);
+    } finally { await context.close(); }
+  }
+}
+
 try {
   browser = await chromium.launch({
     executablePath: process.env.MINI_APP_CHROMIUM || undefined,
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader'],
   });
+  if (motionOnly) {
+    await assertMotionPages();
+    console.log('Focused motion browser smoke passed.');
+  } else {
   {
     const {page, errors, requestFailures, context} = await newPage(1280, 800);
     try {
@@ -656,20 +704,7 @@ try {
       await context.close();
     }
   }
-  for (const width of [1280, 390]) {
-    const {page, context, errors, requestFailures} = await newPage(width, 844);
-    try {
-      await page.addInitScript(removed => {
-        if (localStorage.getItem('zm-rush-motion') === null) localStorage.setItem('zm-rush-motion', JSON.stringify(removed));
-      }, width === 1280 ? 'flinch' : 'head_flinch');
-      await page.goto(origin + mount);
-      await loadOk(page);
-      assert.equal(await page.locator('#motion').inputValue(), 'run', 'A saved removed reaction must safely fall back to running');
-      await assertMotionActions(page);
-      assert.deepEqual(errors, []);
-      assert.deepEqual(requestFailures, []);
-    } finally { await context.close(); }
-  }
+  await assertMotionPages();
   for (const width of [1280, 390]) {
     const {page, context, errors} = await newPage(width, 844);
     try {
@@ -726,6 +761,7 @@ try {
     } finally {await context.close();}
   }
   console.log('Browser smoke passed: loading, fitting, motion playback, cart checkout and bot-language synchronization on desktop and mobile.');
+  }
 } finally {
   await browser?.close();
   server.closeAllConnections();
