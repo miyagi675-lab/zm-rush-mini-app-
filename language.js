@@ -109,6 +109,28 @@ const pairs=`Маленькие скины|Small skins
 Ожидание|Idle
 Ходьба|Walk
 Бег|Run
+Основные движения|Movement
+Действия с оружием|Weapon actions
+Реакции|Reactions
+Приседание|Crouch
+Ходьба сидя|Crouch walk
+Прыжок|Jump
+Длинный прыжок|Long jump
+Плавание|Swim
+На воде|Tread water
+Прицеливание|Aim
+Стрельба / удар|Shoot / attack
+Перезарядка|Reload
+Попадание в корпус|Body hit
+Попадание в голову|Head hit
+Падение · 1|Fall · 1
+Падение · 2|Fall · 2
+Падение · 3|Fall · 3
+Падение сидя|Crouching fall
+Повторить анимацию|Replay animation
+Повторить|Replay
+Для ножа перезарядка недоступна.|Knives do not have a reload animation.
+Это движение недоступно для выбранной модели.|This animation is unavailable for this model.
 Пауза|Pause
 Продолжить|Resume
 Скорость|Speed
@@ -236,9 +258,9 @@ function applyLanguage(){
  observer.disconnect();document.documentElement.lang=language;
  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node;
  while(node=walker.nextNode()){if(node.parentElement.closest('script,style'))continue;const next=translateNode(node,'text',node.nodeValue);if(next!==node.nodeValue)node.nodeValue=next;}
- for(const el of document.querySelectorAll('[aria-label],[title],[placeholder],[alt]'))for(const attr of ['aria-label','title','placeholder','alt'])if(el.hasAttribute(attr)){const next=translateNode(el,attr,el.getAttribute(attr));if(next!==el.getAttribute(attr))el.setAttribute(attr,next);}
+ for(const el of document.querySelectorAll('[aria-label],[title],[placeholder],[alt],optgroup[label]'))for(const attr of ['aria-label','title','placeholder','alt','label'])if(el.hasAttribute(attr)){const next=translateNode(el,attr,el.getAttribute(attr));if(next!==el.getAttribute(attr))el.setAttribute(attr,next);}
  document.querySelectorAll('[data-language]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.language===language)));
- observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-label','title','placeholder','alt']});
+ observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-label','title','placeholder','alt','label']});
 }
 const switcher=document.createElement('div');switcher.style.cssText='display:flex;gap:8px;align-items:center';switcher.setAttribute('aria-label','Language');
 for(const [code,label] of [['ru','RU'],['en','ENG']]){const button=document.createElement('button');button.textContent=label;button.dataset.language=code;button.style.cssText='padding:8px 12px;border:1px solid #88a65a;border-radius:12px;background:#1c291e;color:#d6e1cc;cursor:pointer';button.onclick=()=>{language=code;try{localStorage.setItem('zm-rush-language',code);}catch{}applyLanguage();window.dispatchEvent(new CustomEvent('zm-rush:languagechange',{detail:language}));};switcher.append(button);}

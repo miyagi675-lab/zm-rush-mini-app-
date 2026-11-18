@@ -47,7 +47,7 @@ await new Promise((done, reject) => {
 const origin = 'http://127.0.0.1:' + server.address().port;
 const models = '#model-items .model-pick';
 const pause = '#snapshot';
-const defaultModel = /\/assets\/(?:web-v2\/)?gign\.mdl(?:\.gz)?(?:\?|$)/;
+const defaultModel = /\/assets\/(?:(?:web-v2|player-motion-v1)\/)?gign\.mdl(?:\.gz)?(?:\?|$)/;
 let browser;
 
 async function newPage(width, height) {
@@ -70,11 +70,24 @@ async function newPage(width, height) {
   const page = await context.newPage();
   await page.addInitScript(() => {
     window.studioDraws = 0;
+    window.studioPoseWrites = 0;
+    window.studioInvalidFloats = false;
     for (const method of ['drawArrays', 'drawElements']) {
       const draw = WebGL2RenderingContext.prototype[method];
       WebGL2RenderingContext.prototype[method] = function (...args) {
         if (this.canvas.parentElement?.id === 'viewport') window.studioDraws++;
         return draw.apply(this, args);
+      };
+    }
+    for (const method of ['bufferData', 'bufferSubData']) {
+      const upload = WebGL2RenderingContext.prototype[method];
+      WebGL2RenderingContext.prototype[method] = function (...args) {
+        const data = args[method === 'bufferData' ? 1 : 2];
+        if (this.canvas.parentElement?.id === 'viewport' && data instanceof Float32Array) {
+          window.studioPoseWrites++;
+          for (const value of data) if (!Number.isFinite(value)) window.studioInvalidFloats = true;
+        }
+        return upload.apply(this, args);
       };
     }
   });
@@ -244,6 +257,94 @@ async function assertCheckout(page, names, excluded = []) {
   for (const name of excluded) assert(!draft.includes(name), 'Checkout draft still lists ' + name);
   await checkout.click();
   assert.equal(await page.evaluate(() => window.purchaseUrl), href.href);
+}
+
+async function assertMotionActions(page) {
+  const motion = page.locator('#motion');
+  const pauseMotion = page.locator('#pause');
+  const replay = page.locator('#replay-motion');
+  assert.equal(await motion.locator('option').count(), 19);
+  assert.equal(await motion.locator('option:disabled').count(), 0, 'CT must offer every catalog action');
+  assert.equal(await motion.locator('optgroup').count(), 3);
+
+  const showStudio = async () => {
+    await page.evaluate(() => window.scrollTo({top: 0, behavior: 'instant'}));
+    await waitForStudioDraw(page);
+  };
+  const select = async id => {
+    await motion.selectOption(id);
+    // The settings follow the long catalog on phones. Bring the preview back
+    // onscreen so its intentional offscreen rendering pause does not hide bugs.
+    await showStudio();
+  };
+  const assertPoseStopped = async () => {
+    const writes = await page.evaluate(async () => {
+      const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+      await frame();
+      await frame();
+      const before = window.studioPoseWrites;
+      for (let i = 0; i < 8; i++) await frame();
+      return window.studioPoseWrites - before;
+    });
+    assert.equal(writes, 0, 'A paused or ended animation must stop updating its mesh');
+  };
+  const ended = async () => {
+    await page.waitForFunction(() => document.getElementById('pause').textContent === 'Повторить', null, {timeout: 15000});
+    assert.equal(await pauseMotion.getAttribute('aria-pressed'), 'true');
+    await assertPoseStopped();
+  };
+
+  await page.locator('#speed').selectOption('1.5');
+  await select('crouch_idle');
+  const beforePause = await page.evaluate(() => window.studioPoseWrites);
+  await page.waitForFunction(before => window.studioPoseWrites > before, beforePause);
+  await pauseMotion.click();
+  assert.equal(await pauseMotion.getAttribute('aria-pressed'), 'true');
+  await showStudio();
+  await assertPoseStopped();
+  await pauseMotion.click();
+  assert.equal(await pauseMotion.getAttribute('aria-pressed'), 'false');
+  await showStudio();
+  const beforeResume = await page.evaluate(() => window.studioPoseWrites);
+  await page.waitForFunction(before => window.studioPoseWrites > before, beforeResume);
+
+  for (const action of ['jump', 'reload', 'death1']) {
+    await select(action);
+    await ended();
+    await replay.click();
+    await showStudio();
+    await ended();
+  }
+  assert.equal(await page.evaluate(() => window.studioInvalidFloats), false, 'Animation positions and normals must stay finite');
+
+  await page.locator('[data-language="en"]').click();
+  await page.waitForFunction(() => document.querySelector('#motion option[value="jump"]').textContent === 'Jump');
+  assert.deepEqual(await motion.locator('optgroup').evaluateAll(groups => groups.map(group => group.label)), ['Movement', 'Weapon actions', 'Reactions']);
+  assert.equal(await replay.getAttribute('aria-label'), 'Replay animation');
+  assert.equal(await pauseMotion.textContent(), 'Replay');
+  await select('crouch_idle');
+  await page.reload();
+  await loadOk(page);
+  assert.equal(await motion.inputValue(), 'crouch_idle', 'A newly added action must survive reopening the catalog');
+  assert.equal(await page.locator('html').getAttribute('lang'), 'en');
+  await page.locator('[data-language="ru"]').click();
+
+  // Keep a requested reload selected when equipping a knife: the app must
+  // explain the unavailable action and show a safe fallback, rather than fail.
+  await select('reload');
+  await page.locator('#tab-weapons').click();
+  await page.locator('#weapon-filters [data-category="knife"]').click();
+  await page.locator('[data-weapon-id="butterfly-knife-doppler-sapphire"] .item-pick').click();
+  await loadOk(page);
+  assert.equal(await motion.inputValue(), 'reload');
+  assert.equal(await motion.locator('option[value="reload"]').isDisabled(), true);
+  assert.equal(await pauseMotion.isDisabled(), true);
+  assert.equal(await page.locator('#motion-status').isVisible(), true);
+  assert.match(await page.locator('#motion-status').textContent(), /Для ножа перезарядка недоступна/);
+  await select('shoot');
+  assert.equal(await page.locator('#motion-status').isVisible(), false);
+  await ended();
+  assert.equal(await page.evaluate(() => window.studioInvalidFloats), false);
 }
 
 try {
@@ -494,6 +595,16 @@ try {
     }
   }
   for (const width of [1280, 390]) {
+    const {page, context, errors, requestFailures} = await newPage(width, 844);
+    try {
+      await page.goto(origin + mount);
+      await loadOk(page);
+      await assertMotionActions(page);
+      assert.deepEqual(errors, []);
+      assert.deepEqual(requestFailures, []);
+    } finally { await context.close(); }
+  }
+  for (const width of [1280, 390]) {
     const {page, context, errors} = await newPage(width, 844);
     try {
       await page.addInitScript(() => {
@@ -548,7 +659,7 @@ try {
       assert.deepEqual(errors, []);
     } finally {await context.close();}
   }
-  console.log('Browser smoke passed: loading, fitting, cart checkout and bot-language synchronization on desktop and mobile.');
+  console.log('Browser smoke passed: loading, fitting, motion playback, cart checkout and bot-language synchronization on desktop and mobile.');
 } finally {
   await browser?.close();
   server.closeAllConnections();

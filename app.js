@@ -1,16 +1,17 @@
 import {productPrice,setupPurchase} from './purchase.js?v=12';
-import {english} from './language.js?v=19';
+import {english} from './language.js?v=20';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL,measureMDLPose} from './mdl.js?v=8';
 import {entries,playerModels} from './catalog.js?v=12';
-import {loadModel as load,prefetchModel} from './asset-loader.js?v=6';
+import {loadModel as load,prefetchModel} from './asset-loader.js?v=7';
 import {setupModelBrowser} from './model-browser.js?v=13';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPrices} from './model-prices.js?v=4';
 import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=12';
 import {hatPrices} from './hat-prices.js?v=1';
 import {weapons} from './weapon-catalog.js?v=4';
+import {motionDefinitions,resolveMotion,applyMotionPose} from './motion.js?v=1';
 
 const $=id=>document.getElementById(id);
 const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГОЕ'};
@@ -41,11 +42,27 @@ let ct,hat,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filt
 let player=playerModels.find(m=>m.id===readJSON('zm-rush-player','gign'))||playerModels[0],modelHeight=62,modelHead=new T.Vector3(0,56,0),playerTicket=0;
 let animatedFraming;
 const motionSelect = $('motion');
+const motionGroups = new Map();
+for (const definition of motionDefinitions) {
+  let group = motionGroups.get(definition.group);
+  if (!group) {
+    group = document.createElement('optgroup');
+    group.label = definition.group;
+    motionGroups.set(definition.group, group);
+  }
+  const option = document.createElement('option');
+  option.value = definition.id;
+  option.textContent = definition.label;
+  option.defaultSelected = definition.id === 'run';
+  group.append(option);
+}
+motionSelect.replaceChildren(...motionGroups.values());
 const storedMotion = readJSON('zm-rush-motion', null);
 let motion = [...motionSelect.options].some(option => option.value === storedMotion)
   ? storedMotion
   : motionSelect.querySelector('option[selected]').value;
 let activeSlot='a',animationTime=0,animationSpeed=1,animationPlaying=true,cameraView='angle';
+let resolvedMotion = null, animationFinished = false;
 let sceneAvailable = false;
 let selectionBusy = false;
 let retryPlayerId = null;
@@ -135,7 +152,7 @@ function setBusy(value) {
   selectionBusy = value;
   $('save').disabled = value || !ready;
   $('snapshot').disabled = value || !ready;
-  $('pause').disabled = value || !ready || motion === 'static';
+  syncMotionControls();
   for (const pick of $('items').querySelectorAll('.item-pick')) pick.disabled = !ready;
   modelBrowser?.setBusy(value);
   syncWeapons(equippedWeapon, value || !ready);
@@ -206,6 +223,11 @@ async function selectWeapon(entry, purchaseWeapon = true) {
       fitWeapon(weapon, ct, animatedFraming.height);
       rig.add(weapon);
     }
+    if (animationFinished) animationPlaying = motion !== 'static';
+    animationTime = 0;
+    animationFinished = false;
+    refreshMotionOptions();
+    updateAnimation(0);
     refreshPreviewPrices();
     purchase.refresh(entry && purchaseWeapon ? 'weapon' : undefined);
     toast('');
@@ -220,8 +242,40 @@ async function selectWeapon(entry, purchaseWeapon = true) {
   }
 }
 function chooseSlot(key){if(!ready)return;activeSlot=key;refreshSlots();const look=slots[key],entry=look?entries.find(e=>e.id===look.id):null;selectLook(entry,look?.body||{},false);}
-function setMotion(value){motion=value;animationTime=0;animationPlaying=value!=='static';$('pause').disabled=!ready||selectionBusy||value==='static';$('pause').setAttribute('aria-pressed',String(!animationPlaying));$('pause').textContent=animationPlaying?'Пауза':'Продолжить';}
-const appliedPose = {player:null, hat:null, weapon:null, motion:null, time:null, sequence:0};
+function syncMotionControls() {
+  const supported = Boolean(ct && resolveMotion(ct.userData.sequences, motion, equippedWeapon).supported);
+  const disabled = !ready || selectionBusy || motion === 'static' || !supported;
+  $('pause').disabled = disabled;
+  $('replay-motion').disabled = disabled;
+  $('pause').setAttribute('aria-pressed', String(!animationPlaying));
+  $('pause').textContent = animationFinished ? 'Повторить' : animationPlaying ? 'Пауза' : 'Продолжить';
+}
+function refreshMotionOptions() {
+  if (!ct) { syncMotionControls(); return; }
+  const sequences = ct.userData.sequences;
+  for (const option of motionSelect.options) {
+    option.disabled = !resolveMotion(sequences, option.value, equippedWeapon).supported;
+  }
+  const selected = resolveMotion(sequences, motion, equippedWeapon);
+  resolvedMotion = selected.supported ? selected
+    : ['idle1', 'static'].map(id => resolveMotion(sequences, id, equippedWeapon)).find(item => item.supported);
+  const status = $('motion-status');
+  status.hidden = selected.supported;
+  status.textContent = selected.reason === 'weapon-has-no-reload'
+    ? 'Для ножа перезарядка недоступна.'
+    : 'Это движение недоступно для выбранной модели.';
+  syncMotionControls();
+}
+function setMotion(value) {
+  motion = motionDefinitions.some(item => item.id === value) ? value : 'run';
+  motionSelect.value = motion;
+  animationTime = 0;
+  animationFinished = false;
+  animationPlaying = motion !== 'static';
+  refreshMotionOptions();
+}
+const appliedPose = {player:null, hat:null, weapon:null, motion:null, time:null, resolution:null};
+const animatedHead = new T.Vector3(), headShift = new T.Vector3();
 function placePlayer(previousMotion) {
   const close = isClose();
   const previousTarget = previousMotion === null ? null : viewTarget(close);
@@ -240,25 +294,39 @@ function updateAnimation(delta) {
   if (!ready || !ct?.userData.updatePose) return;
   if (animationPlaying) animationTime += delta*animationSpeed;
 
-  const motionChanged = appliedPose.player !== ct || appliedPose.motion !== motion;
+  const motionChanged = appliedPose.player !== ct || appliedPose.motion !== motion || appliedPose.resolution !== resolvedMotion;
   if (!motionChanged && appliedPose.time === animationTime &&
       appliedPose.hat === hat && appliedPose.weapon === weapon) return;
 
-  let sequence = appliedPose.sequence;
-  if (motionChanged) {
-    sequence = motion === 'static' ? 0 : (ct.userData.sequences.find(s=>s.name.trim().toLowerCase()===motion)?.index||1);
+  if (!resolvedMotion?.supported) return;
+  const playback = applyMotionPose(ct, resolvedMotion, animationTime);
+  animationTime = playback.time;
+  if (playback.finished && !animationFinished) {
+    animationTime = playback.time;
+    animationFinished = true;
+    animationPlaying = false;
+    syncMotionControls();
   }
-  ct.userData.updatePose(sequence, animationTime);
   const previousMotion = appliedPose.player === ct ? appliedPose.motion : null;
   if (previousMotion === null || (previousMotion === 'static') !== (motion === 'static')) placePlayer(previousMotion);
-  hat?.userData.updatePose?.(sequence, animationTime, ct.userData.bones);
+  const head = ct.userData.bones.get('Bip01 Head');
+  if (head) {
+    animatedHead.setFromMatrixPosition(head).applyMatrix4(rig.matrixWorld);
+    if (isClose()) {
+      headShift.subVectors(animatedHead, modelHead);
+      controls.target.add(headShift);
+      camera.position.add(headShift);
+    }
+    modelHead.copy(animatedHead);
+  }
+  hat?.userData.updatePose?.(resolvedMotion.sequenceIndex, playback.time, ct.userData.bones);
   if (weapon) fitWeapon(weapon, ct, animatedFraming.height);
   appliedPose.player = ct;
   appliedPose.hat = hat;
   appliedPose.weapon = weapon;
   appliedPose.motion = motion;
   appliedPose.time = animationTime;
-  appliedPose.sequence = sequence;
+  appliedPose.resolution = resolvedMotion;
 }
 function startPreviewLoop(viewport) {
   const canObserve = typeof IntersectionObserver === 'function';
@@ -318,6 +386,9 @@ async function choosePlayer(id,initial=false){
   ct=next;hat=nextHat;player=nextPlayer;appliedPose.player=null;rig.add(ct);if(hat)rig.add(hat);trimHats();trimPlayers();
   animatedFraming=nextFraming;
   animationTime=0;ready=true;
+  if (animationFinished) animationPlaying=motion!=='static';
+  animationFinished=false;
+  refreshMotionOptions();
   updateAnimation(0);
   frame(isClose());$('model-label').textContent=player.name;
   refreshPreviewPrices();
@@ -361,7 +432,12 @@ motionSelect.onchange = () => {
   setMotion(motionSelect.value);
   try { localStorage.setItem('zm-rush-motion', JSON.stringify(motion)); } catch {}
 };
-$('speed').onchange=e=>animationSpeed=Number(e.target.value);$('pause').onclick=()=>{animationPlaying=!animationPlaying;$('pause').setAttribute('aria-pressed',String(!animationPlaying));$('pause').textContent=animationPlaying?'Пауза':'Продолжить';};
+$('speed').onchange=e=>animationSpeed=Number(e.target.value);
+$('pause').onclick=()=>{
+  if (animationFinished) setMotion(motion);
+  else { animationPlaying=!animationPlaying; syncMotionControls(); }
+};
+$('replay-motion').onclick=()=>{setMotion(motion);updateAnimation(0);};
 motionSelect.value = motion;
 setMotion(motion);
 $('slot-a').onclick=()=>chooseSlot('a');$('slot-b').onclick=()=>chooseSlot('b');
