@@ -1,7 +1,7 @@
 import {Box3, Matrix4, Vector3} from './vendor/three.module.js';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {productPrice} from './purchase.js?v=12';
-import {weapons} from './weapon-catalog.js?v=5';
+import {weapons} from './weapon-catalog.js?v=6';
 
 export function prepareWeapon(model, entry) {
   const toGrip = new Matrix4();
@@ -120,7 +120,7 @@ export function setupWeaponBrowser(onChoose, createCartButton) {
       image.height = 180;
       image.loading = 'lazy';
       image.decoding = 'async';
-      image.dataset.preview = 'assets/weapons-v1/' + entry.id + '.webp' + (entry.category === 'knife' ? '' : '?v=2');
+      image.dataset.preview = 'assets/weapons-v1/' + entry.id + '.webp' + (entry.previewVersion ? '?v=' + entry.previewVersion : entry.category === 'knife' ? '' : '?v=2');
       const name = document.createElement('span');
       name.className = 'item-name';
       name.textContent = entry.name;
