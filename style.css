@@ -392,6 +392,12 @@
   line-height: 1.45;
 }
 
+@media (max-width: 800px) and (max-height: 500px) {
+  .studio {
+    position: relative;
+  }
+}
+
 #retry-model:not([hidden]) {
   display: inline-block;
   max-width: 100%;
