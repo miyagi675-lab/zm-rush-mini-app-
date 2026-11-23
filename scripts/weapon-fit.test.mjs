@@ -89,3 +89,40 @@ test('retargeted MP5 grips stay at the right hand across player motions', async 
     }
   } finally { disposeMDL(player); }
 });
+
+test('first-person straight knives point away from the wrist instead of across the palm', async () => {
+  const referenceEntry = weapons.find(weapon => weapon.id === 'bayonet-white');
+  const reference = prepareWeapon(await load('weapons-v1/bayonet-white.mdl'), referenceEntry);
+  const direction = center(reference, 'KLINOK1.bmp').sub(center(reference, 'FRONTDRJAK.bmp')).normalize();
+  disposeMDL(reference);
+  const player = await load('gign.mdl');
+  try {
+    for (const id of ['default-knife-marble-fade', 'tron-knife-1', 'tron-knife-2', 'tron-knife-3', 'bayonet-blue-galaxy']) {
+      const entry = weapons.find(weapon => weapon.id === id);
+      const model = prepareWeapon(await load('weapons-v1/' + id + '.mdl'), entry);
+      try {
+        let tip = new Vector3();
+        for (const mesh of model.children) {
+          const positions = mesh.geometry.attributes.position;
+          for (let i = 0; i < positions.count; i++) {
+            const point = new Vector3().fromBufferAttribute(positions, i);
+            if (point.lengthSq() > tip.lengthSq()) tip.copy(point);
+          }
+        }
+        assert(tip.clone().normalize().dot(direction) > .85, id + ': blade points across the hand');
+        assert(nearestSurface(model, new Vector3()).length() < .5, id + ': handle misses the palm');
+        for (const motion of ['aim', 'shoot', 'walk', 'crouch_idle']) {
+          const resolved = resolveMotion(player.userData.sequences, motion, entry);
+          assert(resolved.supported, motion);
+          for (const time of [0, resolved.duration / 2, resolved.duration]) {
+            applyMotionPose(player, resolved, time);
+            fitWeapon(model, player, 60);
+            const wrist = new Vector3().setFromMatrixPosition(player.userData.bones.get('Bip01 R Hand'));
+            const handle = new Vector3().applyMatrix4(model.matrix);
+            assert(handle.distanceTo(wrist) < 4, id + ': handle detached during ' + motion);
+          }
+        }
+      } finally { disposeMDL(model); }
+    }
+  } finally { disposeMDL(player); }
+});

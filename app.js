@@ -8,9 +8,9 @@ import {loadModel as load,prefetchModel} from './asset-loader.js?v=8';
 import {setupModelBrowser} from './model-browser.js?v=13';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPrices} from './model-prices.js?v=4';
-import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=14';
+import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=15';
 import {hatPrices} from './hat-prices.js?v=1';
-import {weapons} from './weapon-catalog.js?v=6';
+import {weapons} from './weapon-catalog.js?v=7';
 import {motionDefinitions,resolveMotion,applyMotionPose,advanceMotionClock} from './motion.js?v=2';
 
 const $=id=>document.getElementById(id);
