@@ -1,4 +1,4 @@
-import {modelGroups,modelGroupById,modelPreview} from './model-groups.js?v=3';
+import {modelGroups,modelGroupById,modelPreview} from './model-groups.js?v=4';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 
 export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()=>true,initialTab=null,createCartButton,priceLabel=()=>''}){

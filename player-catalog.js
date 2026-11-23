@@ -2084,6 +2084,12 @@ export const extraPlayerModels=[
     -0.057
    ]
   }
+ },
+ {
+  "id": "sugar",
+  "name": "Шугар",
+  "nameEn": "Sugar",
+  "file": "players-v1/sugar.mdl"
  }
 ];
 export const playerNamePairs=extraPlayerModels.map(model=>[model.name,model.nameEn]);

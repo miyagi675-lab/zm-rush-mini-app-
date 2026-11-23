@@ -1,4 +1,4 @@
-import {playerNamePairs} from './player-catalog.js?v=9';
+import {playerNamePairs} from './player-catalog.js?v=10';
 const pairs=`Маленькие скины|Small skins
 Оружие|Weapons
 Поиск оружия|Search weapons

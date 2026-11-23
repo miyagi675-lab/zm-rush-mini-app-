@@ -159,7 +159,8 @@ export const modelGroups=[
    "p2_mrfoster",
    "p2_peakscout",
    "p2_scorpion",
-   "p2_squigly"
+   "p2_squigly",
+   "sugar"
   ]
  },
  {

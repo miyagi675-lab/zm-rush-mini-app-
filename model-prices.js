@@ -178,4 +178,5 @@ export const modelPrices = Object.freeze({
   'p2_thanos': monthly(10), // 173. Танос
   'p2_tlizard': monthly(10), // 174. Том · ящерица
   'p2_umas1_v3': monthly(10), // 175. Голд Шип
+  sugar: monthly(10),
 });
