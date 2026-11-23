@@ -1,4 +1,4 @@
-import {modelAssets} from './model-assets.js?v=6';
+import {modelAssets} from './model-assets.js?v=7';
 // Share downloads, keep successful buffers in memory, and reuse persistent data.
 const pending=new Map(),cacheName='zm-rush-models-v1';
 const maxCachedModels = 60;
@@ -6,6 +6,15 @@ let cachePromise,prefetching=false;
 const queued=new Set();
 function trimBuffers(){let bytes=0,count=0;for(const t of pending.values())if(t.done){bytes+=t.bytes;count++;}for(const [file,t] of pending){if(count<=8&&bytes<=24*1024*1024)break;if(t.done&&count>1){pending.delete(file);bytes-=t.bytes;count--;}}}
 const cacheStore=()=>cachePromise??=(async()=>{try{return await caches.open(cacheName);}catch{return null;}})();
+// Disk caching is optional. A slow/unavailable storage API must not hold up a fit.
+function cachedResponse(url) {
+ return new Promise(resolve=>{
+  let settled=false;
+  const finish=response=>{if(settled)return;settled=true;clearTimeout(timer);resolve(response);};
+  const timer=setTimeout(()=>finish(null),150);
+  cacheStore().then(cache=>cache?.match(url)).then(response=>finish(response||null),()=>finish(null));
+ });
+}
 export function loadModel(file,{priority='high',onProgress}={}){
  let task=pending.get(file);
  if(!task){
@@ -20,10 +29,9 @@ export function loadModel(file,{priority='high',onProgress}={}){
 async function read(file,priority,progress){
  const packed=typeof DecompressionStream!=='undefined'||file.startsWith('players-v1/')||file.startsWith('weapons-v1/');
  const url=new URL('assets/'+(packed?(modelAssets[file]||file+'.gz'):file),import.meta.url).href;
- const cache=await cacheStore();
- let cached;try{cached=await cache?.match(url);}catch{}
+ const cached=await cachedResponse(url);
  const decode=async response=>{if(!packed)return response.arrayBuffer();if(typeof DecompressionStream!=='undefined')return new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();const {gunzipSync}=await import('./vendor/fflate.js');return gunzipSync(new Uint8Array(await response.arrayBuffer())).buffer;};
- if(cached){try{return await decode(cached);}catch{try{await cache?.delete(url);}catch{}}}
+ if(cached){try{return await decode(cached);}catch{cacheStore().then(cache=>cache?.delete(url)).catch(()=>{});}}
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),30000);
  try{
   const response=await fetch(url,{priority,signal:controller.signal});
@@ -33,14 +41,15 @@ async function read(file,priority,progress){
   if(reader){while(true){const {value,done}=await reader.read();if(done)break;chunks.push(value);received+=value.length;const percent=total?Math.min(100,Math.floor(received/total*10)*10):0;if(percent!==last){last=percent;progress({received,total,percent});}}}
   else chunks.push(new Uint8Array(await response.arrayBuffer()));
   const body=new Blob(chunks),buffer=await decode(new Response(body));
-  if (cache) {
-    cache.put(url, new Response(body))
+  cacheStore().then(cache=>{
+    if (!cache) return;
+    return cache.put(url, new Response(body))
       .then(() => cache.keys())
       .then(keys => Promise.all(
         keys.slice(0, -maxCachedModels).map(request => cache.delete(request))
       ))
       .catch(() => {});
-  }
+  }).catch(()=>{});
   return buffer;
  }finally{clearTimeout(timeout);}
 }

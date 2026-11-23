@@ -47,7 +47,7 @@ await new Promise((done, reject) => {
 const origin = 'http://127.0.0.1:' + server.address().port;
 const models = '#model-items .model-pick';
 const pause = '#snapshot';
-const defaultModel = /\/assets\/(?:(?:web-v2|player-motion-v1)\/)?gign\.mdl(?:\.gz)?(?:\?|$)/;
+const defaultModel = /\/assets\/(?:(?:web-v2|player-motion-v1|player-fast-v1)\/)?gign\.mdl(?:\.gz)?(?:\?|$)/;
 const motionOnly = process.argv.includes('--motion-only');
 const motionWidth = Number(process.argv.find(arg => arg.startsWith('--motion-width='))?.split('=')[1]);
 let browser;

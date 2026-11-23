@@ -4,7 +4,7 @@ import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL,measureMDLPose} from './mdl.js?v=8';
 import {entries,playerModels} from './catalog.js?v=12';
-import {loadModel as load,prefetchModel} from './asset-loader.js?v=8';
+import {loadModel as load,prefetchModel} from './asset-loader.js?v=9';
 import {setupModelBrowser} from './model-browser.js?v=13';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPrices} from './model-prices.js?v=4';
@@ -17,6 +17,7 @@ const $=id=>document.getElementById(id);
 const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГОЕ'};
 const fittedHats=new Map();
 const playerCache=new Map();
+const weaponCache=new Map();
 const indexedMesh = {indexed:true};
 const platformTop = .3;
 function ensureHead(model, attachment) {
@@ -35,6 +36,24 @@ function trimPlayers(){for(const [id,model] of playerCache){if(playerCache.size<
 function fittedHat(entry,nextBody,model=player){const key=model.id+':'+entry.id+':'+JSON.stringify(nextBody);const cached=fittedHats.get(key);if(cached){fittedHats.delete(key);fittedHats.set(key,cached);}return {key,cached};}
 function hatScaleFor(model,entry){const override=model.hatScaleOverrides?.[entry.id];if(override===undefined)return model.hatScale;const base=typeof model.hatScale==='number'?{head:model.hatScale,body:model.hatScale}:model.hatScale;return {...base,...(typeof override==='number'?{head:override}:override)};}
 function trimHats(){for(const [key,value] of fittedHats){if(fittedHats.size<=8)break;if(value!==hat){fittedHats.delete(key);disposeMDL(value);}}}
+function weaponBytes(model) {
+ let bytes=0;
+ for(const {geometry,local,localNormals,boneIds,normalIds} of model.userData.meshes){
+  bytes+=local.byteLength+localNormals.byteLength+(boneIds.length+normalIds.length)*8;
+  for(const attribute of Object.values(geometry.attributes))bytes+=attribute.array.byteLength*2;
+  bytes+=(geometry.index?.array.byteLength||0)*2;
+ }
+ for(const material of model.userData.materials){const data=material?.map?.image?.data;if(data)bytes+=data.byteLength*2.34;}
+ return bytes;
+}
+function trimWeapons() {
+ let bytes=[...weaponCache.values()].reduce((sum,model)=>sum+model.userData.previewBytes,0);
+ for(const [id,model] of weaponCache){
+  if(weaponCache.size<=4&&bytes<=16*1024*1024)break;
+  if(model===weapon)continue;
+  weaponCache.delete(id);bytes-=model.userData.previewBytes;disposeMDL(model);
+ }
+}
 const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
 const favorites=new Set(readJSON('zm-rush-favorites',[]));
 const slots=readJSON('zm-rush-slots',{a:null,b:null});
@@ -201,21 +220,31 @@ async function selectLook(entry,nextBody={},writeSlot=true){
 }
 async function selectWeapon(entry, purchaseWeapon = true) {
   if (!ready || selectionBusy) return;
+  if (entry?.id === equippedWeapon?.id) {
+    purchase.refresh(entry && purchaseWeapon ? 'weapon' : undefined);
+    return;
+  }
+  const started = performance.now();
   const token = ++ticket;
   const label = entry ? 'Примеряем ' + entry.name + '…' : 'Снимаем оружие…';
   beginLoading(label);
   try {
     let next = null;
     if (entry) {
-      const data = await load('weapons-v1/' + entry.id + '.mdl', {
-        onProgress: progress => { if (token === ticket) progressFor(label)(progress); },
-      });
-      if (token !== ticket) return;
-      next = prepareWeapon(parseMDL(data,null,0,{},1,indexedMesh), entry);
+      next = weaponCache.get(entry.id);
+      if (next) { weaponCache.delete(entry.id); weaponCache.set(entry.id, next); }
+      else {
+        const data = await load('weapons-v1/' + entry.id + '.mdl', {
+          onProgress: progress => { if (token === ticket) progressFor(label)(progress); },
+        });
+        if (token !== ticket) return;
+        next = prepareWeapon(parseMDL(data,null,0,{},1,indexedMesh), entry);
+        next.userData.previewBytes = weaponBytes(next);
+        weaponCache.set(entry.id, next);
+      }
     }
     if (weapon) {
       rig.remove(weapon);
-      disposeMDL(weapon);
     }
     weapon = next;
     equippedWeapon = entry;
@@ -223,6 +252,7 @@ async function selectWeapon(entry, purchaseWeapon = true) {
       fitWeapon(weapon, ct, animatedFraming.height);
       rig.add(weapon);
     }
+    trimWeapons();
     if (animationFinished) animationPlaying = motion !== 'static';
     animationTime = 0;
     animationCycleTime = 0;
@@ -232,6 +262,7 @@ async function selectWeapon(entry, purchaseWeapon = true) {
     refreshPreviewPrices();
     purchase.refresh(entry && purchaseWeapon ? 'weapon' : undefined);
     toast('');
+    performance.measure('zm-rush:weapon-ready', {start:started});
   } catch (error) {
     console.error(error);
     toast('Не удалось загрузить оружие. Попробуйте ещё раз.');
