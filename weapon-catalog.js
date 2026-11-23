@@ -391,5 +391,473 @@ export const weapons = [
     "id": "m4a1-control-panel",
     "name": "M4A1 | Control Panel",
     "category": "rifle"
+  },
+  {
+    "id": "bayonet-autotronic",
+    "name": "Bayonet | Autotronic",
+    "category": "knife",
+    "grip": [
+      10.19346,
+      -6.23442,
+      37.27738
+    ]
+  },
+  {
+    "id": "bayonet-blue-galaxy",
+    "name": "Bayonet | Blue Galaxy",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      14.16334,
+      -6.4932,
+      -5.46657
+    ]
+  },
+  {
+    "id": "bayonet-knife-deep-space",
+    "name": "Bayonet | Deep Space",
+    "category": "knife",
+    "grip": [
+      9.9596,
+      -6.44127,
+      37.2031
+    ]
+  },
+  {
+    "id": "bayonet-momentum",
+    "name": "Bayonet | Momentum",
+    "category": "knife",
+    "grip": [
+      10.06753,
+      -6.44803,
+      37.20721
+    ]
+  },
+  {
+    "id": "bloody-m9",
+    "name": "M9 Bayonet | Bloody",
+    "category": "knife",
+    "grip": [
+      10.43485,
+      -6.41976,
+      37.3131
+    ]
+  },
+  {
+    "id": "default-knife-marble-fade",
+    "name": "Knife | Marble Fade",
+    "category": "knife",
+    "sourceHand": "Bone_Righthand",
+    "grip": [
+      11.8855,
+      -5.29007,
+      -5.39883
+    ]
+  },
+  {
+    "id": "karambit-blue-dreamer",
+    "name": "Karambit | Blue Dreamer",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      13.30473,
+      -4.02197,
+      -5.04865
+    ]
+  },
+  {
+    "id": "karambit-ocassion",
+    "name": "Karambit | Ocassion",
+    "category": "knife",
+    "grip": [
+      9.48974,
+      -6.14636,
+      37.55193
+    ]
+  },
+  {
+    "id": "karambit-ruby",
+    "name": "Karambit | Ruby",
+    "category": "knife",
+    "grip": [
+      9.49164,
+      -6.14655,
+      37.55788
+    ]
+  },
+  {
+    "id": "karambit-ultraviolet",
+    "name": "Karambit | Ultraviolet",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      14.65174,
+      -6.46868,
+      -6.89779
+    ]
+  },
+  {
+    "id": "karambit-gamma-doppler-all-phases-1",
+    "name": "Karambit | Gamma Doppler Phase 1",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      15.14656,
+      -4.09393,
+      -6.0194
+    ]
+  },
+  {
+    "id": "karambit-gamma-doppler-all-phases-2",
+    "name": "Karambit | Gamma Doppler Phase 2",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      15.14656,
+      -4.09393,
+      -6.0194
+    ]
+  },
+  {
+    "id": "karambit-gamma-doppler-all-phases-3",
+    "name": "Karambit | Gamma Doppler Phase 3",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      15.14656,
+      -4.09393,
+      -6.0194
+    ]
+  },
+  {
+    "id": "karambit-gamma-doppler-all-phases-4",
+    "name": "Karambit | Gamma Doppler Phase 4",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      15.14656,
+      -4.09393,
+      -6.0194
+    ]
+  },
+  {
+    "id": "karambit-gamma-doppler-all-phases-5",
+    "name": "Karambit | Gamma Doppler Emerald",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      15.14656,
+      -4.09393,
+      -6.0194
+    ]
+  },
+  {
+    "id": "m9-bayonet-gamma-doppler-phase-2",
+    "name": "M9 Bayonet Gamma Doppler Phase 2",
+    "category": "knife",
+    "grip": [
+      10.46409,
+      -6.17302,
+      37.36517
+    ]
+  },
+  {
+    "id": "m9-bayonet-kill-confirmed",
+    "name": "M9 Bayonet Kill Confirmed",
+    "category": "knife",
+    "grip": [
+      10.46409,
+      -6.17302,
+      37.36517
+    ]
+  },
+  {
+    "id": "m9-bayonet-marble-fade",
+    "name": "M9 Bayonet Marble Fade",
+    "category": "knife",
+    "grip": [
+      9.89233,
+      -6.37279,
+      37.11374
+    ]
+  },
+  {
+    "id": "meat-knife",
+    "name": "Knife | Meat Cleaver",
+    "category": "knife",
+    "grip": [
+      10.32334,
+      -6.12409,
+      37.30385
+    ]
+  },
+  {
+    "id": "skeleton-knife-fade-specialist-gloves-fade",
+    "name": "Skeleton Knife | Fade",
+    "category": "knife",
+    "grip": [
+      10.50365,
+      -6.19255,
+      37.45396
+    ]
+  },
+  {
+    "id": "skeleton-knife-vanilla-on-default-hands",
+    "name": "Skeleton Knife | Vanilla",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      16.42865,
+      -6.11611,
+      -5.52408
+    ]
+  },
+  {
+    "id": "stiletto-sapphire",
+    "name": "Stiletto | Sapphire",
+    "category": "knife",
+    "grip": [
+      9.93573,
+      -6.58431,
+      37.27837
+    ]
+  },
+  {
+    "id": "survival-knife-case-hardened-403-pattern-blue-gem",
+    "name": "Survival Knife | Case Hardened 403 Blue Gem",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      14.4653,
+      -7.90801,
+      -5.46155
+    ]
+  },
+  {
+    "id": "talon-gamma-doppler",
+    "name": "Talon | Gamma Doppler",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      13.5471,
+      -4.05778,
+      -4.29645
+    ]
+  },
+  {
+    "id": "talon-knife-ice",
+    "name": "Talon | Knife Ice",
+    "category": "knife",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "grip": [
+      18.32538,
+      -3.83501,
+      -4.02256
+    ]
+  },
+  {
+    "id": "tron-knife-1",
+    "name": "Knife | Tron Blue",
+    "category": "knife",
+    "sourceHand": "Bone_Righthand",
+    "grip": [
+      11.8855,
+      -5.29007,
+      -5.39883
+    ]
+  },
+  {
+    "id": "tron-knife-2",
+    "name": "Knife | Tron Green",
+    "category": "knife",
+    "sourceHand": "Bone_Righthand",
+    "grip": [
+      11.8855,
+      -5.29007,
+      -5.39883
+    ]
+  },
+  {
+    "id": "tron-knife-3",
+    "name": "Knife | Tron Orange",
+    "category": "knife",
+    "sourceHand": "Bone_Righthand",
+    "grip": [
+      11.8855,
+      -5.29007,
+      -5.39883
+    ]
+  },
+  {
+    "id": "default-m4a1-hyper-beast",
+    "name": "M4A1 | Hyper Beast",
+    "category": "rifle"
+  },
+  {
+    "id": "default-m4a1-nuclear-leek",
+    "name": "M4A1 | Nuclear Leek",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a1-s-decimator-by-thealien252",
+    "name": "M4A1-S | Decimator",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a1-s-t0xic-262dd-1",
+    "name": "M4A1-S | T0xic · Yellow & Green",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a1-s-t0xic-262dd-2",
+    "name": "M4A1-S | T0xic · Blue & Purple",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a1-s-t0xic-262dd-3",
+    "name": "M4A1-S | T0xic · Green & Neon",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a1-s-t0xic-262dd-4",
+    "name": "M4A1-S | T0xic · ORIGINAL",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a1-s-t0xic-262dd-5",
+    "name": "M4A1-S | T0xic · Purple & Blue",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a1-s-t0xic-262dd-6",
+    "name": "M4A1-S | T0xic · Red & Orange",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a1-s-t0xic-262dd-7",
+    "name": "M4A1-S | T0xic · VHS ERROR",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a1-astro",
+    "name": "M4A1 Astro",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a1-galaxyy",
+    "name": "M4A1 | Galaxy",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a4-dragon-king-theeyeof-horous",
+    "name": "M4A4 | Dragon King",
+    "category": "rifle"
+  },
+  {
+    "id": "m4a4-howl-60106",
+    "name": "M4A4 | Howl (60106)",
+    "category": "rifle",
+    "sourceHand": "v_weapon.Bip01_R_Hand"
+  },
+  {
+    "id": "m-a1-hellfire-by-the-eye-of-horus",
+    "name": "M4A1 | Hellfire",
+    "category": "rifle"
+  },
+  {
+    "id": "3491-mp5-tiger",
+    "name": "MP5 | Tiger",
+    "category": "smg"
+  },
+  {
+    "id": "3567-v-mp5-11",
+    "name": "MP5 | 11",
+    "category": "smg",
+    "sourceHand": "Bone_Righthand"
+  },
+  {
+    "id": "3669-fire-mp5",
+    "name": "MP5 | Fire",
+    "category": "smg",
+    "sourceHand": "Bone_Righthand"
+  },
+  {
+    "id": "golden-mp5",
+    "name": "MP5 | Golden",
+    "category": "smg"
+  },
+  {
+    "id": "mp5-agent",
+    "name": "MP5 | Agent",
+    "category": "smg",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "viewTransform": [
+      0.9833927948372886,
+      0.016952448689611026,
+      -0.1806965011989238,
+      0,
+      0.03568750202751341,
+      -0.9942520608692854,
+      0.10094177359356579,
+      0,
+      -0.177946658471416,
+      -0.10571401960291095,
+      -0.9783453034579623,
+      0,
+      -10.19979472285678,
+      5.135439986739024,
+      -7.18683049645363,
+      0.9999999999999999
+    ]
+  },
+  {
+    "id": "mp5-asiimov",
+    "name": "MP5 | Asiimov",
+    "category": "smg"
+  },
+  {
+    "id": "mp5-bloodsport",
+    "name": "MP5 | Bloodsport",
+    "category": "smg"
+  },
+  {
+    "id": "mp5-phosphor",
+    "name": "MP5 | Phosphor",
+    "category": "smg",
+    "sourceHand": "v_weapon.Bip01_R_Hand",
+    "viewTransform": [
+      0.9833927948372886,
+      0.016952448689611026,
+      -0.1806965011989238,
+      0,
+      0.03568750202751341,
+      -0.9942520608692854,
+      0.10094177359356579,
+      0,
+      -0.177946658471416,
+      -0.10571401960291095,
+      -0.9783453034579623,
+      0,
+      -10.19979472285678,
+      5.135439986739024,
+      -7.18683049645363,
+      0.9999999999999999
+    ]
+  },
+  {
+    "id": "mp5-sd-autumn-twilly",
+    "name": "MP5 | SD Autumn Twilly",
+    "category": "smg"
+  },
+  {
+    "id": "mp5-spooky",
+    "name": "MP5 | Spooky",
+    "category": "smg"
+  },
+  {
+    "id": "suppressed-mp5",
+    "name": "Suppressed | MP5",
+    "category": "smg",
+    "sourceHand": "Bone_Righthand"
   }
 ];

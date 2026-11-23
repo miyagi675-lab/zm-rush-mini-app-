@@ -1,7 +1,7 @@
 import {Box3, Matrix4, Vector3} from './vendor/three.module.js';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {productPrice} from './purchase.js?v=12';
-import {weapons} from './weapon-catalog.js?v=4';
+import {weapons} from './weapon-catalog.js?v=5';
 
 export function prepareWeapon(model, entry) {
   const toGrip = new Matrix4();
@@ -73,7 +73,7 @@ export function fitWeapon(weapon, player, height) {
   weapon.matrixWorldNeedsUpdate = true;
 }
 
-const categories = {all:'Все', rifle:'Винтовки', pistol:'Пистолеты', knife:'Ножи'};
+const categories = {all:'Все', rifle:'Винтовки', smg:'Пистолеты-пулемёты', pistol:'Пистолеты', knife:'Ножи'};
 export const weaponPrice = Object.freeze({amount: 9, currency: 'USD', period: 'month'});
 export const weaponPriceLabel = productPrice(weaponPrice);
 

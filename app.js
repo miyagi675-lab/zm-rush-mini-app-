@@ -1,5 +1,5 @@
 import {productPrice,setupPurchase} from './purchase.js?v=12';
-import {english} from './language.js?v=20';
+import {english} from './language.js?v=21';
 import * as T from './vendor/three.module.js';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {parseMDL,disposeMDL,measureMDLPose} from './mdl.js?v=8';
@@ -8,9 +8,9 @@ import {loadModel as load,prefetchModel} from './asset-loader.js?v=7';
 import {setupModelBrowser} from './model-browser.js?v=13';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPrices} from './model-prices.js?v=4';
-import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=12';
+import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=13';
 import {hatPrices} from './hat-prices.js?v=1';
-import {weapons} from './weapon-catalog.js?v=4';
+import {weapons} from './weapon-catalog.js?v=5';
 import {motionDefinitions,resolveMotion,applyMotionPose,advanceMotionClock} from './motion.js?v=2';
 
 const $=id=>document.getElementById(id);

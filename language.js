@@ -5,6 +5,7 @@ const pairs=`Маленькие скины|Small skins
 Найти оружие|Find a weapon
 Категории оружия|Weapon categories
 Винтовки|Rifles
+Пистолеты-пулемёты|Submachine guns
 Пистолеты|Pistols
 Ножи|Knives
 Снять оружие|Unequip weapon
