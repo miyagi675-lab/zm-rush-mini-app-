@@ -46,8 +46,8 @@ test('duplicate webhook deliveries share work and failed updates remain retryabl
 });
 test('the main menu uses the premium title and shop icon in both languages', () => {
   assert.equal(home().text.split('\n')[0], 'ZMRush - PREMIUM');
-  assert.equal(home().reply_markup.inline_keyboard[0][0].text, '☣️ Магазин');
-  assert.equal(home('en').reply_markup.inline_keyboard[0][0].text, '☣️ Shop');
+  assert.equal(home().reply_markup.inline_keyboard[0][0].text, '☣️ VIP магазин');
+  assert.equal(home('en').reply_markup.inline_keyboard[0][0].text, '☣️ VIP Shop');
 });
 test('first start asks for language, then restores it on subsequent starts', async () => {
   const data = new Map();

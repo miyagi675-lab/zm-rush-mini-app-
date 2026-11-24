@@ -30,7 +30,7 @@ const englishPrivileges=[
 const copy={
  ru:{
   welcome:'Добро пожаловать! Откройте магазин привилегий или 3D-каталог персонажей и аксессуаров.',
-  shop:'☣️ Магазин', catalog:'👕 Открыть 3D-каталог', weapons:'Посмотреть в 3D',
+  shop:'☣️ VIP магазин', catalog:'👕 Открыть 3D-каталог', weapons:'Посмотреть в 3D',
   shopIntro:'Выберите привилегию, чтобы узнать её возможности, стоимость и условия приобретения.',
   home:'← Главное меню', back:'← Все привилегии', buy:'🛒 Купить у продавца',
   term:'💰 Стоимость: 10$\n📅 Срок действия: 1 месяц.',
@@ -40,7 +40,7 @@ const copy={
  },
  en:{
   welcome:'Welcome! Open the perks shop or browse the 3D catalog of characters and accessories.',
-  shop:'☣️ Shop', catalog:'👕 Open 3D catalog', weapons:'View in 3D',
+  shop:'☣️ VIP Shop', catalog:'👕 Open 3D catalog', weapons:'View in 3D',
   shopIntro:'Choose a perk to see what it includes, how much it costs, and how to buy it.',
   home:'← Main menu', back:'← All perks', buy:'🛒 Buy from the seller',
   term:'💰 Price: $10\n📅 Duration: 1 month.',
@@ -82,7 +82,7 @@ const translations={
 for(const [lang,translation] of Object.entries(translations)){
  const [welcome,shop,catalog,weapons,shopIntro,home,back,buy,price,duration,seller]=translation.split('|');
  copy[lang]={
-  welcome,shop:'☣️ '+shop,catalog:'👕 '+catalog,weapons,shopIntro,
+  welcome,shop:'☣️ VIP '+shop,catalog:'👕 '+catalog,weapons,shopIntro,
   home:'← '+home,back:'← '+back,buy:'🛒 '+buy,term:'💰 '+price+': $10\n📅 '+duration,
   seller,catalogIntro:'👕 ZMRush · 3D',stale:'/shop',
  };
@@ -286,11 +286,9 @@ async function api(token,method,body){
  const data=await response.json();
  if(!response.ok||!data.ok){
   if(method==='editMessageText'&&data.description?.includes('message is not modified'))return true;
-  const error=Error('Telegram API request failed');
-  error.method=method;
-  error.status=data.error_code||response.status;
-  error.invalidVideoId=method==='sendVideo'&&error.status===400&&/file[_ ]?id|file identifier/i.test(data.description||'');
-  throw error;
+  const status=data.error_code||response.status;
+  const invalidVideoId=method==='sendVideo'&&status===400&&/file[_ ]?id|file identifier/i.test(data.description||'');
+  throw Object.assign(new Error('Telegram API request failed'),{method,status,invalidVideoId});
  }
  return data.result;
 }
