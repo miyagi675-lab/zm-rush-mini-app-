@@ -1,4 +1,4 @@
-import {cartDraft, productKey, restoreCart, summarizeCart} from './cart.js?v=3';
+import {cartDraft, productKey, restoreCart, summarizeCart} from './cart.js?v=4';
 import {checkoutLocale} from './checkout-locales.js?v=1';
 
 const productTypes = new Map([
@@ -35,6 +35,10 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
   const empty = document.getElementById('cart-empty');
   const add = document.getElementById('cart-add');
   const checkout = document.getElementById('cart-checkout');
+  const checkoutStatus = document.createElement('p');
+  checkoutStatus.id = 'cart-checkout-status';
+  checkoutStatus.setAttribute('role', 'status');
+  items.before(checkoutStatus);
   const storageKey = 'zm-rush-cart';
   const counters = document.querySelectorAll('[data-cart-count]');
   const cardCartIcon = document.createElement('template');
@@ -54,6 +58,7 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     || checkoutLocale(document.documentElement.lang) || 'ru';
   let localeRevision = 0;
   let pendingLanguage = null;
+  let pendingLanguageRevision = null;
 
   function setCheckoutLocale(value) {
     const next = checkoutLocale(value);
@@ -67,6 +72,7 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     const initData = window.Telegram?.WebApp?.initData;
     if (!initData || pendingLanguage) return pendingLanguage;
     const revision = localeRevision;
+    pendingLanguageRevision = revision;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
     pendingLanguage = (async () => {
@@ -79,14 +85,29 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
         const result = await response.json();
         if (revision === localeRevision) setCheckoutLocale(result.language);
       } catch {}
-    })().finally(() => {clearTimeout(timeout);pendingLanguage = null;});
+    })().finally(() => {
+      clearTimeout(timeout);
+      pendingLanguage = null;
+      pendingLanguageRevision = null;
+      refreshDraft();
+    });
+    refreshDraft();
     return pendingLanguage;
   }
 
   function refreshDraft() {
-    draft = cartDraft(cart, checkout.dataset.sellerUrl, {locale});
-    if (draft) checkout.href = draft.url;
+    const waitingForLanguage = cart.length > 0 && pendingLanguageRevision === localeRevision;
+    draft = waitingForLanguage ? null : cartDraft(cart, checkout.dataset.sellerUrl, {locale});
+    if (draft?.url) checkout.href = draft.url;
     else checkout.removeAttribute('href');
+    checkout.hidden = !draft?.url;
+
+    let message = '';
+    if (waitingForLanguage) message = 'Подготавливаем ссылку на продавца…';
+    else if (draft?.tooLong) message = 'Заказ слишком длинный для Telegram. Уберите часть товаров и оформите их отдельным заказом.';
+    else if (cart.length && !draft?.url) message = 'Не удалось подготовить ссылку на продавца.';
+    checkoutStatus.textContent = message;
+    checkoutStatus.hidden = !message;
   }
 
   for (const [type, label] of productTypes) {
@@ -195,11 +216,12 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     }
     empty.hidden = cart.length > 0;
     document.getElementById('cart-summary').hidden = cart.length === 0;
-    checkout.hidden = cart.length === 0;
     for (const counter of counters) counter.textContent = String(cart.length);
+    const previousCartKeys = cartKeys;
     cartKeys = new Set(cart.map(productKey));
     for (const button of document.querySelectorAll('.card-cart-button')) {
-      updateCardCartButton(button);
+      const key = button.dataset.cartKey;
+      if (previousCartKeys.has(key) !== cartKeys.has(key)) updateCardCartButton(button);
     }
     refreshDraft();
   }
@@ -248,26 +270,26 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
   });
   window.Telegram?.WebApp?.onEvent?.('activated', syncBotLanguage);
 
-  checkout.onclick = async event => {
-    event.preventDefault();
+  checkout.onclick = event => {
     event.stopPropagation();
-    if (pendingLanguage) await pendingLanguage;
-    refreshDraft();
-    if (!draft) return;
+    if (!draft?.url || checkout.hidden) {
+      event.preventDefault();
+      return;
+    }
 
     const tg = window.Telegram?.WebApp;
     try {
       // iOS Mini App navigation can drop the chat draft.
       if (tg?.platform === 'ios' && tg.openLink) {
         tg.openLink(draft.url, {try_browser: 'safari'});
+        event.preventDefault();
         return;
       }
       if (tg?.openTelegramLink) {
         tg.openTelegramLink(draft.url);
-        return;
+        event.preventDefault();
       }
     } catch {}
-    window.open(draft.url, '_blank', 'noopener,noreferrer');
   };
 
   renderCart();

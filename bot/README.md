@@ -14,5 +14,13 @@ preferences. No bot token is sent to or stored in the frontend.
 Order translations for all 20 bot languages are in `../checkout-locales.js`.
 The order is a draft in the seller's chat; the user confirms sending it.
 
+The first grenade video upload stores Telegram's `file_id` in the existing
+KV namespace. Update `GRENADE_VIDEO_REVISION` to the new asset commit when
+replacing the video. Each revision uses a different KV entry.
+
+Repeated webhook updates share a result for up to five minutes within a Worker
+instance. Cloudflare collects explicit error events with the update ID, API
+method, status and duration when available.
+
 Checks: `node --test scripts/cart.test.mjs bot/worker.test.mjs bot/language.test.mjs`
 from the repository root, followed by `npm run test:browser`.

@@ -1,11 +1,48 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import worker,{privileges,home,shop,card,handleUpdate} from './worker.js';
+import worker,{privileges,home,shop,card,handleUpdate,handleUpdateOnce} from './worker.js';
 test('the grenade video is sent after editing the description',async()=>{
   const calls=[];
   await handleUpdate({callback_query:{id:'grenades',from:{id:42},message:{message_id:9,chat:{id:42,type:'private'}},data:'ze:item:1'}},async (...args)=>calls.push(args));
   assert.deepEqual(calls.map(([method])=>method),['answerCallbackQuery','editMessageText','sendVideo']);
   assert.equal(calls[2][1].reply_parameters.message_id,9);
   assert.match(calls[2][1].video,/\/grenade-modes\.mp4$/);
+});
+test('grenade video reuses the stored Telegram file ID and refreshes an invalid ID',async()=>{
+  const data=new Map();
+  const preferences={get:async key=>data.get(key),put:async (key,value)=>data.set(key,value)};
+  const update={callback_query:{id:'grenade-cache',from:{id:42},message:{message_id:9,chat:{id:42,type:'private'}},data:'ze:item:1'}};
+  const videos=[];
+  let rejectCached=false;
+  const call=async (method,body)=>{
+    if(method!=='sendVideo')return;
+    videos.push(body.video);
+    if(body.video==='stored-video'&&rejectCached)throw Object.assign(Error('Invalid ID'),{invalidVideoId:true});
+    return {video:{file_id:rejectCached?'new-video':'stored-video'}};
+  };
+  await handleUpdate(update,call,preferences);
+  await handleUpdate(update,call,preferences);
+  assert.deepEqual(videos.map(path=>path.startsWith('https:')?'upload':path),['upload','stored-video']);
+  rejectCached=true;
+  await handleUpdate(update,call,preferences);
+  await handleUpdate(update,call,preferences);
+  assert.deepEqual(videos.map(path=>path.startsWith('https:')?'upload':path),
+    ['upload','stored-video','stored-video','upload','new-video']);
+});
+test('duplicate webhook deliveries share work and failed updates remain retryable',async()=>{
+  const update={update_id:1000};
+  let calls=0;
+  let complete;
+  const processUpdate=()=>{calls++;return new Promise(resolve=>{complete=resolve;});};
+  const original=handleUpdateOnce(update,processUpdate);
+  const duplicate=handleUpdateOnce(update,processUpdate);
+  await Promise.resolve();
+  assert.equal(calls,1);
+  complete('sent');
+  assert.deepEqual(await Promise.all([original,duplicate]),['sent','sent']);
+  assert.equal(await handleUpdateOnce(update,()=>{throw Error('Duplicate call');}),'sent');
+  const failed={update_id:1001};
+  await assert.rejects(handleUpdateOnce(failed,()=>{throw Error('Temporary error');}),/Temporary error/);
+  assert.equal(await handleUpdateOnce(failed,()=> 'retried'),'retried');
 });
 test('the main menu uses the premium title and shop icon in both languages', () => {
   assert.equal(home().text.split('\n')[0], 'ZMRush - PREMIUM');

@@ -2,6 +2,10 @@ import {checkoutLocale, checkoutLocales} from './checkout-locales.js?v=1';
 
 const productTypes = new Set(['model', 'hat', 'weapon']);
 const pricePeriods = ['day', 'week', 'month', 'year', 'lifetime'];
+const maxDraftCodePoints = 4096;
+// Keep the encoded link within an application limit as well. Non-ASCII
+// product names can reach this before Telegram's message limit.
+const maxDraftUrlLength = 4096;
 
 export function productKey(product) {
   if (!productTypes.has(product?.type) || typeof product.id !== 'string' || !product.id.trim()) return null;
@@ -117,5 +121,9 @@ export function cartDraft(products, seller, {
   const text = [words.intro, ...lines].join('\n');
   link.search = '';
   link.hash = '';
-  return {text, url: link.href + '?text=' + encodeURIComponent(text)};
+  const url = link.href + '?text=' + encodeURIComponent(text);
+  if ([...text].length > maxDraftCodePoints || url.length > maxDraftUrlLength) {
+    return {text, url: null, tooLong: true};
+  }
+  return {text, url};
 }

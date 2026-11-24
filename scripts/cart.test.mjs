@@ -31,6 +31,22 @@ test('Russian checkout keeps original names and numeric totals', () => {
   assert.deepEqual(summarizeCart(products).totals, [monthly(47)]);
 });
 
+test('checkout blocks a long encoded Telegram link without removing products from the draft', () => {
+  const items = Array.from({length: 30}, (_, index) => ({
+    type: 'model', id: 'long' + index, name: 'Модель «Новогодняя ёлка» ' + index,
+    nameEn: 'Tree ' + index, price: monthly(10),
+  }));
+  const ru = cartDraft(items, 'https://t.me/name_F1', {locale: 'ru'});
+  assert.equal(ru.tooLong, true);
+  assert.equal(ru.url, null);
+  assert.match(ru.text, /Новогодняя ёлка» 29/);
+  assert.match(ru.text, /\$300 \/ месяц/);
+  const en = cartDraft(items, 'https://t.me/name_F1', {locale: 'en'});
+  assert.equal(new URL(en.url).searchParams.get('text'), en.text);
+  const reduced = cartDraft(items.slice(0, 10), 'https://t.me/name_F1', {locale: 'ru'});
+  assert.equal(new URL(reduced.url).searchParams.get('text'), reduced.text);
+});
+
 test('all 20 bot languages cover mixed periods, free and unknown prices', () => {
   assert.equal(Object.keys(checkoutLocales).length, 20);
   const items = [...products,

@@ -1,17 +1,15 @@
-import {productPrice,setupPurchase} from './purchase.js?v=12';
-import {english} from './language.js?v=24';
-import * as T from './vendor/three.module.js';
-import {OrbitControls} from './vendor/OrbitControls.js';
-import {parseMDL,disposeMDL,measureMDLPose} from './mdl.js?v=8';
+import {productPrice,setupPurchase} from './purchase.js?v=13';
+import {english} from './language.js?v=25';
 import {entries,playerModels} from './catalog.js?v=15';
-import {loadModel as load,prefetchModel} from './asset-loader.js?v=11';
-import {setupModelBrowser} from './model-browser.js?v=15';
+import {loadModel as load,prefetchModel,invalidateModel} from './asset-loader.js?v=12';
+import {setupModelBrowser} from './model-browser.js?v=16';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPrices} from './model-prices.js?v=6';
-import {fitWeapon, prepareWeapon, setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=15';
+import {setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=16';
 import {hatPrices} from './hat-prices.js?v=1';
 import {weapons} from './weapon-catalog.js?v=7';
 import {motionDefinitions,resolveMotion,applyMotionPose,advanceMotionClock} from './motion.js?v=2';
+import {normalizeCatalogSearch} from './catalog-search.js?v=1';
 
 const $=id=>document.getElementById(id);
 const categories={heroes:'ПЕРСОНАЖ',animals:'ЗВЕРИ',other:'ДРУГОЕ'};
@@ -20,6 +18,9 @@ const playerCache=new Map();
 const weaponCache=new Map();
 const indexedMesh = {indexed:true};
 const platformTop = .3;
+const coarsePointer = matchMedia('(pointer: coarse)');
+const mobileLayout = matchMedia('(max-width: 800px)');
+const HEAVY_MODEL_VERTICES = 25000;
 function ensureHead(model, attachment) {
  if (model.userData.bones.has('Bip01 Head')) return;
  const parent = model.userData.bones.get(attachment?.bone || 'Bip01 Neck') || model.userData.bones.values().next().value;
@@ -55,11 +56,21 @@ function trimWeapons() {
  }
 }
 const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback));}catch{return fallback;}};
-const favorites=new Set(readJSON('zm-rush-favorites',[]));
-const slots=readJSON('zm-rush-slots',{a:null,b:null});
+function writeJSON(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; }
+}
+const storedFavorites = readJSON('zm-rush-favorites', []);
+const favorites = new Set(Array.isArray(storedFavorites) ? storedFavorites : []);
+const storedSlots = readJSON('zm-rush-slots', null);
+const slots = { a: storedSlots?.a ?? null, b: storedSlots?.b ?? null };
+let savedLook = readJSON('zm-rush-look', null);
+if (!savedLook || typeof savedLook !== 'object' || Array.isArray(savedLook)) savedLook = null;
 let ct,hat,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filter='all',ready=false,modelBrowser=null;
-let player=playerModels.find(m=>m.id===readJSON('zm-rush-player','gign'))||playerModels[0],modelHeight=62,modelHead=new T.Vector3(0,56,0),playerTicket=0;
+let player=playerModels.find(m=>m.id===readJSON('zm-rush-player','gign'))||playerModels[0],modelHeight=62,playerTicket=0;
+let T, OrbitControls, parseMDL, disposeMDL, measureMDLPose, prepareWeapon, fitWeapon;
+let modelHead, animatedHead, headShift;
 let animatedFraming, crouchedFraming;
+let reducedPreviewQuality = false;
 const motionSelect = $('motion');
 const motionGroups = new Map();
 for (const definition of motionDefinitions) {
@@ -84,8 +95,10 @@ let activeSlot='a',animationTime=0,animationCycleTime=0,animationSpeed=1,animati
 let resolvedMotion = null, animationFinished = false;
 let sceneAvailable = false;
 let selectionBusy = false;
-let retryPlayerId = null;
-let restoreSavedLook = true;
+let retryPreview = null;
+let needsLegacyLook = Boolean(savedLook && !savedLook.playerId);
+let invalidatePreview = () => {};
+let resizePreview = () => {};
 let weapon = null;
 let equippedWeapon = null;
 const telegram=window.Telegram?.WebApp;
@@ -122,8 +135,8 @@ const purchase = setupPurchase(() => {
 function syncSelection(){for(const card of $('items').children){const selected=card.dataset.id===current?.id;card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
 const loadHatPreviews = createPreviewLoader();
 function renderCatalog(){
- const term=$('search').value.trim().toLocaleLowerCase('ru');
- const visible=entries.filter(e=>(filter==='all'||filter==='favorites'||e.category===filter)&&(!term||(e.name+' '+english(e.name)+' '+e.id).toLocaleLowerCase('ru').includes(term))&&(filter!=='favorites'||favorites.has(e.id)));
+ const term=normalizeCatalogSearch($('search').value);
+ const visible=entries.filter(e=>(filter==='all'||filter==='favorites'||e.category===filter)&&(!term||normalizeCatalogSearch(e.name+' '+english(e.name)+' '+e.id).includes(term))&&(filter!=='favorites'||favorites.has(e.id)));
  $('items').replaceChildren();$('count').textContent=filter==='favorites'?visible.length+' избранных':visible.length+' / '+entries.length;
  $('empty').hidden=!!visible.length;$('empty').textContent=filter==='favorites'?'Добавь понравившиеся модели звёздочкой.':'Ничего не нашли. Попробуй другое название.';
  for(const e of visible){
@@ -136,7 +149,22 @@ function renderCatalog(){
   const price=document.createElement('span');price.className='catalog-item-price';price.textContent=productPrice(hatPrices[e.id]);
   pick.append(img,name,category,price);pick.onclick=()=>selectLook(e,{},true);pick.onpointerenter=pick.onfocus=()=>{if(ready)prefetchModel('hats/'+e.id+'.mdl');};
   const fav=document.createElement('button');fav.className='favorite';fav.textContent=favorites.has(e.id)?'★':'☆';fav.title=favorites.has(e.id)?'Убрать из избранного':'Добавить в избранное';fav.setAttribute('aria-label',fav.title);fav.setAttribute('aria-pressed',String(favorites.has(e.id)));
-  fav.onclick=ev=>{ev.stopPropagation();favorites.has(e.id)?favorites.delete(e.id):favorites.add(e.id);localStorage.setItem('zm-rush-favorites',JSON.stringify([...favorites]));renderCatalog();};
+  fav.onclick=()=>{
+    const wasFocused = document.activeElement === fav;
+    const added = !favorites.has(e.id);
+    if (added) favorites.add(e.id); else favorites.delete(e.id);
+    writeJSON('zm-rush-favorites',[...favorites]);
+    if (filter === 'favorites' && !added) {
+      const nextId = card.nextElementSibling?.dataset.id || card.previousElementSibling?.dataset.id;
+      renderCatalog();
+      if (wasFocused) ($('items').querySelector('[data-id="'+nextId+'"] .favorite') || document.querySelector('[data-filter="favorites"]')).focus({preventScroll:true});
+    } else {
+      fav.textContent = added ? '★' : '☆';
+      fav.title = added ? 'Убрать из избранного' : 'Добавить в избранное';
+      fav.setAttribute('aria-label',fav.title);
+      fav.setAttribute('aria-pressed',String(added));
+    }
+  };
   card.append(pick,fav,purchase.createCartButton(hatProduct(e)));if(current?.id===e.id){const check=document.createElement('span');check.className='check';check.textContent='✓';card.append(check);}$('items').append(card);
  }
  loadHatPreviews($('items'));
@@ -164,13 +192,18 @@ function frame(close=false){
  const offsets={front:new T.Vector3(far,high,0),side:new T.Vector3(0,high,far),back:new T.Vector3(-far,high,0),angle:new T.Vector3(far,high,(close?34:65)*ratio)};
  camera.position.copy(target).add(offsets[cameraView]);controls.minDistance=12*ratio;controls.maxDistance=230*ratio;controls.update();
  $('full').classList.toggle('active',!close);$('full').setAttribute('aria-pressed',String(!close));$('head').classList.toggle('active',close);$('head').setAttribute('aria-pressed',String(close));
+ invalidatePreview();
 }
-function setView(value){cameraView=value;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===value));frame(isClose());}
+function setView(value){cameraView=value;document.querySelectorAll('[data-view]').forEach(b=>{const selected=b.dataset.view===value;b.classList.toggle('active',selected);b.setAttribute('aria-pressed',String(selected));});frame(isClose());}
 function refreshSlots(){for(const key of ['a','b']){const button=$('slot-'+key),look=slots[key];button.setAttribute('aria-pressed',String(activeSlot===key));button.querySelector('span').textContent=look?.name||'Без шапки';}}
 function setBusy(value) {
   selectionBusy = value;
   $('save').disabled = value || !ready;
+  $('restore-look').disabled = value || !ready;
   $('snapshot').disabled = value || !ready;
+  for (const id of ['motion','speed','slot-a','slot-b','full','head','rotate','remove'])
+    $(id).disabled = value || !ready;
+  for (const button of document.querySelectorAll('[data-view]')) button.disabled = value || !ready;
   syncMotionControls();
   for (const pick of $('items').querySelectorAll('.item-pick')) pick.disabled = !ready;
   modelBrowser?.setBusy(value);
@@ -194,11 +227,28 @@ function refreshPreviewPrices() {
 }
 
 function beginLoading(message) {
-  retryPlayerId = null;
+  retryPreview = null;
   $('retry-model').hidden = true;
   $('loading-message').textContent = message;
   $('loading').hidden = false;
   setBusy(true);
+}
+function showPreviewError(message, action, label = 'Повторить загрузку') {
+  retryPreview = action;
+  $('loading-message').textContent = message;
+  $('retry-model').textContent = label;
+  $('retry-model').hidden = !action;
+  $('loading').hidden = false;
+}
+async function loadPreviewModel(file, parse, options, isCurrent, download) {
+  const data = await (download || load(file, options));
+  if (!isCurrent()) return null;
+  try {
+    return parse(data);
+  } catch (error) {
+    await invalidateModel(file, data).catch(() => {});
+    throw error;
+  }
 }
 function progressFor(label) {
   return ({percent}) => {
@@ -206,26 +256,47 @@ function progressFor(label) {
   };
 }
 async function selectLook(entry,nextBody={},writeSlot=true){
- if(!ready)return;const started=performance.now(),token=++ticket;
- beginLoading(entry?'Примеряем '+entry.name+'…':'Снимаем шапку…');
+ if(!ready||selectionBusy)return false;
+ const started=performance.now(),token=++ticket;
+ const isCurrent = () => token === ticket;
+ const label = entry ? 'Примеряем '+entry.name+'…' : 'Снимаем шапку…';
+ beginLoading(label);
  try{
-  let next=null,key;if(entry){const lookup=fittedHat(entry,nextBody);key=lookup.key;next=lookup.cached;if(!next){const buffer=await load('hats/'+entry.id+'.mdl',{onProgress:p=>{if(token===ticket)progressFor('Примеряем '+entry.name+'…')(p);}});if(token!==ticket)return;next=parseMDL(buffer,ct.userData.bones,0,nextBody,hatScaleFor(player,entry),indexedMesh);fittedHats.set(key,next);}}
-  if(token!==ticket)return;if(hat)rig.remove(hat);hat=next;if(hat)rig.add(hat);trimHats();current=entry;body=nextBody;
+  let next = null;
+  if (entry) {
+    const {key,cached} = fittedHat(entry,nextBody);
+    next = cached;
+    if (!next) {
+      const file = 'hats/'+entry.id+'.mdl';
+      next = await loadPreviewModel(file, data=>parseMDL(data,ct.userData.bones,0,nextBody,hatScaleFor(player,entry),indexedMesh),
+        {onProgress:p=>{if(isCurrent())progressFor(label)(p);}}, isCurrent);
+      if (!next) return false;
+      fittedHats.set(key,next);
+    }
+  }
+  if(!isCurrent())return false;if(hat)rig.remove(hat);hat=next;if(hat)rig.add(hat);trimHats();current=entry;body=nextBody;
   refreshPreviewPrices();
   $('selected-name').textContent=entry?.name||'Без шапки';$('detail-name').textContent=entry?.name||player.name;$('detail-file').textContent=entry?entry.id+'.mdl · '+player.name:'Модель '+player.name;$('variants').replaceChildren();
   for(const variant of hat?.userData.variants||[]){const label=document.createElement('label');label.textContent='Вариант';const select=document.createElement('select');variant.names.forEach((name,index)=>{const option=document.createElement('option');option.value=index;option.textContent=name;select.append(option);});select.value=body[variant.part]||0;select.onchange=()=>selectLook(current,{...body,[variant.part]:Number(select.value)},true);label.append(select);$('variants').append(label);}
-  if(writeSlot){slots[activeSlot]=entry?{id:entry.id,name:entry.name,body:{...nextBody}}:null;localStorage.setItem('zm-rush-slots',JSON.stringify(slots));}
+  if(writeSlot){slots[activeSlot]=entry?{id:entry.id,name:entry.name,body:{...nextBody}}:null;writeJSON('zm-rush-slots',slots);}
   refreshSlots();syncSelection();purchase.refresh(entry && writeSlot ? 'hat' : undefined);toast('');performance.measure('zm-rush:accessory-ready',{start:started});try{telegram?.HapticFeedback?.selectionChanged();}catch{}
- }catch(e){console.error(e);toast(e.message+' — попробуйте ещё раз.');}finally{if(token===ticket){$('loading').hidden=true;setBusy(false);}}
+  invalidatePreview();
+  return true;
+ }catch(error){
+  if (isCurrent()) showPreviewError('Примерка не удалась.',()=>selectLook(entry,nextBody,writeSlot));
+  console.error(error);
+  return false;
+ }finally{if(isCurrent()){$('loading').hidden=!retryPreview;setBusy(false);}}
 }
 async function selectWeapon(entry, purchaseWeapon = true) {
-  if (!ready || selectionBusy) return;
+  if (!ready || selectionBusy) return false;
   if (entry?.id === equippedWeapon?.id) {
     purchase.refresh(entry && purchaseWeapon ? 'weapon' : undefined);
-    return;
+    return true;
   }
   const started = performance.now();
   const token = ++ticket;
+  const isCurrent = () => token === ticket;
   const label = entry ? 'Примеряем ' + entry.name + '…' : 'Снимаем оружие…';
   beginLoading(label);
   try {
@@ -234,11 +305,12 @@ async function selectWeapon(entry, purchaseWeapon = true) {
       next = weaponCache.get(entry.id);
       if (next) { weaponCache.delete(entry.id); weaponCache.set(entry.id, next); }
       else {
-        const data = await load('weapons-v1/' + entry.id + '.mdl', {
-          onProgress: progress => { if (token === ticket) progressFor(label)(progress); },
-        });
-        if (token !== ticket) return;
-        next = prepareWeapon(parseMDL(data,null,0,{},1,indexedMesh), entry);
+        const file = 'weapons-v1/' + entry.id + '.mdl';
+        const model = await loadPreviewModel(file, data=>parseMDL(data,null,0,{},1,indexedMesh),
+          {onProgress: progress => { if (isCurrent()) progressFor(label)(progress); }}, isCurrent);
+        if (!model) return false;
+        try { next = prepareWeapon(model, entry); }
+        catch (error) { disposeMDL(model); throw error; }
         next.userData.previewBytes = weaponBytes(next);
         weaponCache.set(entry.id, next);
       }
@@ -263,12 +335,15 @@ async function selectWeapon(entry, purchaseWeapon = true) {
     purchase.refresh(entry && purchaseWeapon ? 'weapon' : undefined);
     toast('');
     performance.measure('zm-rush:weapon-ready', {start:started});
+    invalidatePreview();
+    return true;
   } catch (error) {
     console.error(error);
-    toast('Не удалось загрузить оружие. Попробуйте ещё раз.');
+    if (isCurrent()) showPreviewError('Примерка не удалась.',()=>selectWeapon(entry,purchaseWeapon));
+    return false;
   } finally {
-    if (token === ticket) {
-      $('loading').hidden = true;
+    if (isCurrent()) {
+      $('loading').hidden = !retryPreview;
       setBusy(false);
     }
   }
@@ -306,9 +381,9 @@ function setMotion(value) {
   animationFinished = false;
   animationPlaying = motion !== 'static';
   refreshMotionOptions();
+  invalidatePreview();
 }
 const appliedPose = {player:null, hat:null, weapon:null, motion:null, time:null, resolution:null};
-const animatedHead = new T.Vector3(), headShift = new T.Vector3();
 const posture = value => value === 'static' ? 'static' : value?.startsWith('crouch') ? 'crouch' : 'standing';
 function placePlayer(previousMotion) {
   const close = isClose();
@@ -372,45 +447,96 @@ function updateAnimation(delta, elapsed = delta) {
 function startPreviewLoop(viewport) {
   const canObserve = typeof IntersectionObserver === 'function';
   let inView = !canObserve;
-  let running = false;
+  let request = null;
+  let dirty = true;
   let previous = null;
 
+  const blockingDialogs = [$('cart-dialog'), $('photo-dialog')];
+  const canDraw = () => sceneAvailable && inView && !document.hidden && !blockingDialogs.some(dialog => dialog.open);
+  const isAnimated = () => ready && (controls.autoRotate ||
+    (animationPlaying && resolvedMotion?.supported && resolvedMotion.definition.id !== 'static'));
+  function schedule() {
+    if (request === null && canDraw()) request = requestAnimationFrame(draw);
+  }
+  function invalidate() {
+    dirty = true;
+    schedule();
+  }
   function draw(now) {
-    const elapsed = previous === null ? 0 : Math.max(0, (now - previous) / 1000);
+    request = null;
+    if (!canDraw()) { previous = null; return; }
+    const elapsed = previous === null ? 0 : Math.max(0,(now - previous)/1000);
+    const animating = isAnimated();
+    if (animating && reducedPreviewQuality && previous !== null && elapsed < 0.031) {
+      schedule();
+      return;
+    }
     const delta = Math.min(elapsed, .1);
     previous = now;
     updateAnimation(delta, elapsed);
-    controls.update(delta);
-    renderer.render(scene, camera);
+    const cameraMoved = controls.update(delta);
+    if (dirty || animating || cameraMoved) {
+      renderer.render(scene, camera);
+      dirty = false;
+    }
+    if (isAnimated() || cameraMoved) schedule();
+    if (request === null) previous = null;
   }
-
   function sync() {
-    const shouldRun = sceneAvailable && inView && !document.hidden;
-    if (running === shouldRun) return;
-    running = shouldRun;
     previous = null;
-    renderer.setAnimationLoop(running ? draw : null);
+    if (canDraw()) invalidate();
+    else if (request !== null) {
+      cancelAnimationFrame(request);
+      request = null;
+    }
   }
-
   const observer = canObserve ? new IntersectionObserver(records => {
     inView = records[records.length - 1].isIntersecting;
     sync();
   }) : null;
+  const dialogObserver = new MutationObserver(sync);
+  for (const dialog of blockingDialogs) dialogObserver.observe(dialog,{attributes:true,attributeFilter:['open']});
   observer?.observe(viewport);
   document.addEventListener('visibilitychange', sync);
+  controls.addEventListener('change',invalidate);
   sync();
-
-  return () => {
-    observer?.disconnect();
-    document.removeEventListener('visibilitychange', sync);
-    sync();
+  return {
+    invalidate,
+    sync,
+    stop() {
+      observer?.disconnect();
+      dialogObserver.disconnect();
+      document.removeEventListener('visibilitychange', sync);
+      controls.removeEventListener('change',invalidate);
+      if (request !== null) cancelAnimationFrame(request);
+      request = null;
+    },
   };
 }
-function snapshot(){updateAnimation(0);renderer.render(scene,camera);const url=renderer.domElement.toDataURL('image/png');$('photo').src=url;$('download-photo').href=url;$('photo-dialog').showModal();const share=$('share-photo');share.hidden=!navigator.share;share.onclick=async()=>{try{const blob=await (await fetch(url)).blob(),file=new File([blob],'zm-rush.png',{type:'image/png'});if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Мой образ ZM RUSH'});else await navigator.share({title:'Мой образ ZM RUSH',text:current?.name||player.name});}catch(e){if(e.name!=='AbortError')toast('Не удалось поделиться снимком.');}};}
+function snapshot(){
+  if (!ready) return;
+  updateAnimation(0);
+  renderer.render(scene,camera);
+  // Read synchronously in the same frame so the renderer can discard its drawing buffer.
+  const url=renderer.domElement.toDataURL('image/png');
+  $('photo').src=url;
+  $('download-photo').href=url;
+  $('photo-dialog').showModal();
+  const share=$('share-photo');
+  share.hidden=!navigator.share;
+  share.onclick=async()=>{
+    try {
+      const blob=await (await fetch(url)).blob(),file=new File([blob],'zm-rush.png',{type:'image/png'});
+      if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Мой образ ZM RUSH'});
+      else await navigator.share({title:'Мой образ ZM RUSH',text:current?.name||player.name});
+    }catch(error){if(error.name!=='AbortError')toast('Не удалось поделиться снимком.');}
+  };
+}
 
-async function choosePlayer(id,initial=false){
+async function choosePlayer(id,initial=false,download){
  if (!sceneAvailable || selectionBusy) return false;
  const started=performance.now(),nextPlayer=playerModels.find(m=>m.id===id)||playerModels[0],token=++playerTicket;
+ const isCurrent = () => token === playerTicket && sceneAvailable;
  ready=false;
  const message = 'Загружаем '+nextPlayer.name+'…';
  beginLoading(message);
@@ -418,7 +544,12 @@ async function choosePlayer(id,initial=false){
  try{
   next=playerCache.get(nextPlayer.id);
   if(next){playerCache.delete(nextPlayer.id);playerCache.set(nextPlayer.id,next);}
-  if(!next){next=parseMDL(await load(nextPlayer.file,{onProgress:p=>{if(token===playerTicket)progressFor(message)(p);}}),null,1,{},1,indexedMesh);playerCache.set(nextPlayer.id,next);}
+  if(!next){
+   next=await loadPreviewModel(nextPlayer.file,data=>parseMDL(data,null,1,{},1,indexedMesh),
+    {onProgress:p=>{if(isCurrent())progressFor(message)(p);}},isCurrent,download);
+   if (!next) return false;
+   playerCache.set(nextPlayer.id,next);
+  }
   ensureHead(next,nextPlayer.headAttachment);
   next.userData.updatePose(1,0);
   const nextFraming = measureMDLPose(next);
@@ -431,13 +562,22 @@ async function choosePlayer(id,initial=false){
     nextCrouchedFraming = measureMDLPose(next);
     next.userData.updatePose(1,0);
   }
-  if(current){const lookup=fittedHat(current,body,nextPlayer);nextHat=lookup.cached;if(!nextHat){nextHat=parseMDL(await load('hats/'+current.id+'.mdl'),next.userData.bones,0,body,hatScaleFor(nextPlayer,current),indexedMesh);fittedHats.set(lookup.key,nextHat);}}
-  if(token!==playerTicket || !sceneAvailable)return false;
+  if(current){
+   const {key,cached}=fittedHat(current,body,nextPlayer);nextHat=cached;
+   if(!nextHat){
+    nextHat=await loadPreviewModel('hats/'+current.id+'.mdl',
+     data=>parseMDL(data,next.userData.bones,0,body,hatScaleFor(nextPlayer,current),indexedMesh),undefined,isCurrent);
+    if (!nextHat) return false;
+    fittedHats.set(key,nextHat);
+   }
+  }
+  if(!isCurrent())return false;
   if(hat)rig.remove(hat);if(ct)rig.remove(ct);
   ct=next;hat=nextHat;player=nextPlayer;appliedPose.player=null;rig.add(ct);if(hat)rig.add(hat);trimHats();trimPlayers();
   animatedFraming=nextFraming;
   crouchedFraming=nextCrouchedFraming;
   animationTime=0;ready=true;
+  refreshPreviewQuality();
   animationCycleTime=0;
   if (animationFinished) animationPlaying=motion!=='static';
   animationFinished=false;
@@ -446,41 +586,53 @@ async function choosePlayer(id,initial=false){
   frame(isClose());$('model-label').textContent=player.name;
   refreshPreviewPrices();
   $('detail-name').textContent=current?.name||player.name;$('detail-file').textContent=current?current.id+'.mdl · '+player.name:'Модель '+player.name;
-  try { localStorage.setItem('zm-rush-player',JSON.stringify(player.id)); } catch {}
+  writeJSON('zm-rush-player',player.id);
   performance.measure('zm-rush:model-ready',{start:started});
   modelBrowser?.setSelected(player.id,!initial);
   purchase.refresh(initial ? undefined : 'model');
   toast('');
  } catch (error) {
-  if (sceneAvailable && token === playerTicket) {
+  if (isCurrent()) {
     ready = Boolean(ct);
-    retryPlayerId = nextPlayer.id;
-    $('loading-message').textContent = 'Не удалось загрузить модель. Повторите загрузку или выберите другую модель.';
-    $('retry-model').hidden = false;
+    showPreviewError('Не удалось загрузить модель. Повторите загрузку или выберите другую модель.',()=>choosePlayer(nextPlayer.id,initial));
   }
   console.error(error);
   return false;
  } finally {
   if (token === playerTicket) {
-    $('loading').hidden = ready && retryPlayerId === null;
+    $('loading').hidden = ready && !retryPreview;
     setBusy(false);
   }
  }
- if (restoreSavedLook) {
-  restoreSavedLook = false;
-  const saved = readJSON('zm-rush-look', null);
-  const entry = saved?.id && entries.find(hat => hat.id === saved.id);
-  if (entry) await selectLook(entry, saved.body || {}, false);
-  const savedWeapon = weapons.find(item => item.id === saved?.weaponId);
-  if (savedWeapon) await selectWeapon(savedWeapon, false);
+ if (needsLegacyLook) {
+  needsLegacyLook = false;
+  savedLook = {...savedLook,playerId:player.id};
+  writeJSON('zm-rush-look',savedLook);
+  await restoreLook(false);
  }
  return true;
 }
-$('retry-model').onclick = () => {
-  if (retryPlayerId !== null) return choosePlayer(retryPlayerId);
-};
+function refreshPreviewQuality() {
+  const vertices = ct?.userData.meshes.reduce((total,mesh)=>total+mesh.boneIds.length,0) || 0;
+  reducedPreviewQuality = coarsePointer.matches && vertices > HEAVY_MODEL_VERTICES;
+  if (renderer) renderer.setPixelRatio(Math.min(devicePixelRatio,reducedPreviewQuality ? 1.25 : 2));
+  resizePreview();
+}
+async function restoreLook(notify = true) {
+  if (!savedLook || !ready || selectionBusy) return;
+  const look = savedLook;
+  if (look.playerId !== player.id && playerModels.some(model=>model.id === look.playerId)) {
+    if (!await choosePlayer(look.playerId)) return;
+  }
+  const savedHat = entries.find(entry=>entry.id === look.id) || null;
+  const savedBody = look.body && typeof look.body === 'object' && !Array.isArray(look.body) ? look.body : {};
+  if (!await selectLook(savedHat,savedBody,false)) return;
+  if (!await selectWeapon(weapons.find(entry=>entry.id === look.weaponId) || null,false)) return;
+  if (notify) toast('Образ восстановлен.');
+}
+$('retry-model').onclick = () => { if (!selectionBusy) return retryPreview?.(); };
 $('search').oninput=renderCatalog;document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;syncFilters();renderCatalog();});document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
-$('full').onclick=()=>frame(false);$('head').onclick=()=>frame(true);$('remove').onclick=()=>selectLook(null,{},true);$('rotate').onclick=()=>{if(!sceneAvailable)return;controls.autoRotate=!controls.autoRotate;$('rotate').setAttribute('aria-pressed',String(controls.autoRotate));};
+$('full').onclick=()=>frame(false);$('head').onclick=()=>frame(true);$('remove').onclick=()=>selectLook(null,{},true);$('rotate').onclick=()=>{if(!sceneAvailable)return;controls.autoRotate=!controls.autoRotate;$('rotate').setAttribute('aria-pressed',String(controls.autoRotate));invalidatePreview();};
 motionSelect.onchange = () => {
   setMotion(motionSelect.value);
   try { localStorage.setItem('zm-rush-motion', JSON.stringify(motion)); } catch {}
@@ -489,12 +641,22 @@ $('speed').onchange=e=>animationSpeed=Number(e.target.value);
 $('pause').onclick=()=>{
   if (animationFinished) setMotion(motion);
   else { animationPlaying=!animationPlaying; syncMotionControls(); }
+  invalidatePreview();
 };
 $('replay-motion').onclick=()=>{setMotion(motion);updateAnimation(0);};
 motionSelect.value = motion;
 setMotion(motion);
 $('slot-a').onclick=()=>chooseSlot('a');$('slot-b').onclick=()=>chooseSlot('b');
-$('save').onclick=()=>{try{localStorage.setItem('zm-rush-look',JSON.stringify({id:current?.id||null,body,weaponId:equippedWeapon?.id||null}));toast('Образ сохранён на этом устройстве.');}catch{toast('Не удалось сохранить образ.');}};
+$('restore-look').hidden=!savedLook;
+$('restore-look').onclick=()=>restoreLook();
+$('save').onclick=()=>{
+  const look = {playerId:player.id,id:current?.id||null,body,weaponId:equippedWeapon?.id||null};
+  if (writeJSON('zm-rush-look',look)) {
+    savedLook=look;
+    $('restore-look').hidden=false;
+    toast('Образ сохранён на этом устройстве.');
+  } else toast('Не удалось сохранить образ.');
+};
 $('snapshot').onclick=snapshot;$('close-photo').onclick=()=>$('photo-dialog').close();$('photo-dialog').addEventListener('click',e=>{if(e.target===$('photo-dialog'))$('photo-dialog').close();});
 document.addEventListener('keydown',e=>{
  if(e.key!=='/'||['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName))return;
@@ -503,41 +665,185 @@ document.addEventListener('keydown',e=>{
 });
 document.querySelectorAll('[data-total]').forEach(el=>el.textContent=entries.length);
 refreshSlots();syncFilters();renderCatalog();
-const initialTab = new URLSearchParams(location.search).get('tab') === 'weapons' ? 'weapons' : null;
-modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,isReady:()=>sceneAvailable&&Boolean(ct),onChoose:choosePlayer,initialTab,
+const initialTab = new URLSearchParams(location.search).get('tab');
+modelBrowser=setupModelBrowser({models:playerModels,selectedId:player.id,english,isReady:()=>sceneAvailable&&Boolean(ct),isSceneAvailable:()=>sceneAvailable,onChoose:choosePlayer,initialTab,
  priceLabel: model => productPrice(modelPrices[model.id]),
  createCartButton: model => purchase.createCartButton(modelProduct(model))});
 const syncWeapons = setupWeaponBrowser(selectWeapon, entry => purchase.createCartButton(weaponProduct(entry)));
 setBusy(false);
-let stopPreviewLoop;
-try{
- renderer=new T.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;$('viewport').append(renderer.domElement);
- scene=new T.Scene();lighting(scene);camera=new T.PerspectiveCamera(40,1,.1,500);controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.enablePan=false;controls.maxPolarAngle=Math.PI*.49;controls.autoRotateSpeed=2.1;
- rig=new T.Group();rig.rotation.x=-Math.PI/2;rig.position.y=37;scene.add(rig);const floor=new T.Mesh(new T.CylinderGeometry(27,29,1,64),new T.MeshLambertMaterial({color:0x34432e}));floor.position.y=-.2;scene.add(floor);const ring=new T.Mesh(new T.TorusGeometry(28,.12,8,96),new T.MeshBasicMaterial({color:0x88a65a}));ring.rotation.x=-Math.PI/2;ring.position.y=.35;scene.add(ring);const grid=new T.GridHelper(280,28,0x40503a,0x2a3829);grid.position.y=-.8;scene.add(grid);
- const resize=()=>{const {width,height}=$('viewport').getBoundingClientRect();renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe($('viewport'));resize();
- sceneAvailable = true;
- stopPreviewLoop = startPreviewLoop($('viewport'));
- renderer.domElement.addEventListener('webglcontextlost',e=>{
-  e.preventDefault();
-  ++ticket;
-  ++playerTicket;
-  sceneAvailable = false;
-  stopPreviewLoop();
-  ready = false;
-  retryPlayerId = null;
-  $('retry-model').hidden = true;
-  $('loading').hidden = false;
-  $('loading-message').textContent = '3D-показ прерван. Обновите приложение.';
-  setBusy(false);
- });
- await choosePlayer(player.id,true);
-}catch(e){
- sceneAvailable = false;
- stopPreviewLoop?.();
- ready = false;
- $('loading').hidden = false;
- $('loading-message').textContent = 'Не удалось запустить 3D. Откройте приложение в другом браузере.';
- $('retry-model').hidden = true;
- setBusy(false);
- console.error(e);
+const studio = $('viewport').closest('.studio');
+const toolsPanel = $('look-tools');
+const quickActions = document.querySelector('.mobile-quick-actions');
+const backToTop = $('back-to-top');
+function showMotionTools(open) {
+  toolsPanel.classList.toggle('is-docked',open);
+  $('quick-motion').setAttribute('aria-expanded',String(open));
 }
+function pinPreview(pinned) {
+  studio.classList.toggle('is-pinned',pinned);
+  $('quick-preview').setAttribute('aria-pressed',String(pinned));
+  $('quick-preview').textContent = pinned ? 'Скрыть 3D' : 'Показать 3D';
+}
+$('quick-preview').onclick = () => {
+  showMotionTools(false);
+  pinPreview(!studio.classList.contains('is-pinned'));
+  if (studio.classList.contains('is-pinned') && studio.getBoundingClientRect().bottom <= 0)
+    studio.scrollIntoView({block:'start'});
+};
+$('quick-motion').onclick = () => {
+  const open = !toolsPanel.classList.contains('is-docked');
+  showMotionTools(open);
+  if (open) motionSelect.focus({preventScroll:true});
+};
+document.addEventListener('pointerdown',event=>{
+  if (toolsPanel.classList.contains('is-docked') &&
+      !event.target.closest('#look-tools, #quick-motion')) showMotionTools(false);
+});
+document.addEventListener('keydown',event=>{
+  if (event.key === 'Escape' && toolsPanel.classList.contains('is-docked')) {
+    showMotionTools(false);
+    $('quick-motion').focus({preventScroll:true});
+  }
+});
+function syncQuickActions() {
+  if (mobileLayout.matches) quickActions.append(backToTop);
+  else {
+    quickActions.before(backToTop);
+    pinPreview(false);
+    showMotionTools(false);
+  }
+}
+syncQuickActions();
+mobileLayout.addEventListener?.('change',syncQuickActions);
+coarsePointer.addEventListener?.('change',refreshPreviewQuality);
+
+function createPreviewScene() {
+  scene = new T.Scene();
+  lighting(scene);
+  camera = new T.PerspectiveCamera(40,1,.1,500);
+  rig = new T.Group();
+  rig.rotation.x = -Math.PI/2;
+  rig.position.y = 37;
+  scene.add(rig);
+  const floor = new T.Mesh(new T.CylinderGeometry(27,29,1,64),new T.MeshLambertMaterial({color:0x34432e}));
+  floor.position.y = -.2;
+  const ring = new T.Mesh(new T.TorusGeometry(28,.12,8,96),new T.MeshBasicMaterial({color:0x88a65a}));
+  ring.rotation.x = Math.PI/2;
+  ring.position.y = .35;
+  const grid = new T.GridHelper(280,28,0x40503a,0x2a3829);
+  grid.position.y = -.8;
+  scene.add(floor,ring,grid);
+}
+
+let releaseRenderer = null;
+async function loadGraphics() {
+  if (T) return;
+  const [three,orbit,mdl,weapons] = await Promise.all([
+    import('./vendor/three.module.js'), import('./vendor/OrbitControls.js'),
+    import('./mdl.js?v=8'), import('./weapon-fit.js?v=1'),
+  ]);
+  T = three;
+  OrbitControls = orbit.OrbitControls;
+  ({parseMDL,disposeMDL,measureMDLPose} = mdl);
+  ({prepareWeapon,fitWeapon} = weapons);
+  modelHead = new T.Vector3(0,56,0);
+  animatedHead = new T.Vector3();
+  headShift = new T.Vector3();
+}
+async function openPreview() {
+  const viewport = $('viewport');
+  const oldTarget = controls?.target.clone();
+  const wasRotating = controls?.autoRotate ?? false;
+  releaseRenderer?.();
+  releaseRenderer = null;
+  renderer = null;
+  const loadingLabel = 'Загружаем '+player.name+'…';
+  beginLoading(loadingLabel);
+  try {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('webgl2',{alpha:true,antialias:true});
+    if (!context) throw Error('WebGL2 unavailable');
+    const download = ct ? null : load(player.file,{onProgress:progressFor(loadingLabel)});
+    // The download overlaps the graphics imports. The fit handles its result.
+    download?.catch(()=>{});
+    await loadGraphics();
+    renderer = new T.WebGLRenderer({canvas,context,alpha:true,antialias:true});
+    renderer.outputColorSpace = T.SRGBColorSpace;
+    renderer.toneMapping = T.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = .95;
+    viewport.append(renderer.domElement);
+    if (!scene) createPreviewScene();
+    controls = new OrbitControls(camera,renderer.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.maxPolarAngle = Math.PI*.49;
+    controls.autoRotateSpeed = 2.1;
+    controls.autoRotate = wasRotating;
+    if (oldTarget) controls.target.copy(oldTarget);
+    resizePreview = () => {
+      const {width,height} = viewport.getBoundingClientRect();
+      if (width <= 0 || height <= 0) return;
+      renderer.setSize(width,height);
+      camera.aspect = width/height;
+      camera.updateProjectionMatrix();
+      invalidatePreview();
+    };
+    const observer = new ResizeObserver(resizePreview);
+    observer.observe(viewport);
+    sceneAvailable = true;
+    const loop = startPreviewLoop(viewport);
+    invalidatePreview = loop.invalidate;
+    const lost = event => {
+      event.preventDefault();
+      ++ticket;
+      ++playerTicket;
+      sceneAvailable = false;
+      ready = false;
+      loop.sync();
+      showPreviewError('3D-показ прерван. Попробуйте запустить заново.',openPreview,'Возобновить 3D');
+      setBusy(false);
+    };
+    const restored = () => {
+      if (sceneAvailable) return;
+      sceneAvailable = true;
+      ready = Boolean(ct);
+      retryPreview = null;
+      $('loading').hidden = ready;
+      $('retry-model').hidden = true;
+      setBusy(false);
+      loop.sync();
+      if (!ready) void choosePlayer(player.id,true);
+    };
+    canvas.addEventListener('webglcontextlost',lost);
+    canvas.addEventListener('webglcontextrestored',restored);
+    releaseRenderer = () => {
+      observer.disconnect();
+      loop.stop();
+      canvas.removeEventListener('webglcontextlost',lost);
+      canvas.removeEventListener('webglcontextrestored',restored);
+      controls.dispose();
+      renderer.dispose();
+      canvas.remove();
+      invalidatePreview = () => {};
+      resizePreview = () => {};
+    };
+    ready = Boolean(ct);
+    retryPreview = null;
+    $('retry-model').hidden = true;
+    $('loading').hidden = ready;
+    refreshPreviewQuality();
+    if (ready) frame(isClose());
+    setBusy(false);
+    if (!ready) await choosePlayer(player.id,true,download);
+  } catch(error) {
+    releaseRenderer?.();
+    releaseRenderer = null;
+    renderer = null;
+    sceneAvailable = false;
+    ready = false;
+    showPreviewError('3D временно недоступно. Каталог и корзина работают.',openPreview,'Попробовать снова');
+    setBusy(false);
+    console.error(error);
+  }
+}
+await openPreview();

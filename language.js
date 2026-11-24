@@ -23,6 +23,9 @@ const pairs=`Маленькие скины|Small skins
 Убрать из корзины|Remove from cart
 Итого по указанным ценам|Total for priced items
 Открыть чат с продавцом|Open seller chat
+Заказ слишком длинный для Telegram. Уберите часть товаров и оформите их отдельным заказом.|This order is too long for Telegram. Remove some items and place them in a separate order.
+Не удалось подготовить ссылку на продавца.|Could not prepare the seller link.
+Подготавливаем ссылку на продавца…|Preparing the seller link…
 Корзина|Cart
 Цена по запросу|Price on request
 Бесплатно|Free
@@ -30,6 +33,17 @@ const pairs=`Маленькие скины|Small skins
 Не удалось загрузить модель.|Could not load the model.
 Повторите загрузку или выберите другую модель.|Retry loading or choose another model.
 Не удалось запустить 3D. Откройте приложение в другом браузере.|Could not start 3D. Open the app in another browser.
+Восстановить образ|Restore look
+Действия примерочной|Fitting controls
+Показать 3D|Show 3D
+Скрыть 3D|Hide 3D
+Попробовать снова|Try again
+Примерка недоступна|Fitting unavailable
+Возобновить 3D|Resume 3D
+Примерка не удалась.|Could not preview this item.
+Образ восстановлен.|Look restored.
+3D временно недоступно. Каталог и корзина работают.|3D is temporarily unavailable. The catalog and cart are available.
+3D-показ прерван. Попробуйте запустить заново.|The 3D preview stopped. Try restarting it.
 / день|/ day
 / неделя|/ week
 / год|/ year
@@ -251,17 +265,65 @@ const pairs=`Маленькие скины|Small skins
 Маска Гая Фокса|Guy Fawkes mask`.split('\n').map(line=>line.split('|')).concat(playerNamePairs).sort((a,b)=>b[0].length-a[0].length);
 const exactTranslations=new Map(pairs);
 export const english=text=>exactTranslations.get(text)??pairs.reduce((value,[ru,en])=>value.split(ru).join(en),text);
-let language='ru';try{language=localStorage.getItem('zm-rush-language')==='en'?'en':'ru';}catch{}
+const supportedLanguages = new Set(['ru','en']);
+function initialLanguage(){
+ const requested = new URLSearchParams(location.search).get('lang');
+ try {
+  const saved = localStorage.getItem('zm-rush-language');
+  if (supportedLanguages.has(saved)) return saved;
+ } catch {}
+ return supportedLanguages.has(requested) ? requested : 'ru';
+}
+let language=initialLanguage();
 const originals=new WeakMap();
 function translateNode(node,key,value){let saved=originals.get(node)||{};if(!saved[key]||saved[key].shown!==value)saved[key]={source:value};const item=saved[key];item.shown=language==='en'?english(item.source):item.source;originals.set(node,saved);return item.shown;}
-const observer=new MutationObserver(applyLanguage);
+const translatedAttributes=['aria-label','title','placeholder','alt','label'];
+const ignoredElements='script,style';
+function translateText(node){
+ if(!node.nodeValue.trim()) return;
+ const next=translateNode(node,'text',node.nodeValue);
+ if(next!==node.nodeValue)node.nodeValue=next;
+}
+function translateAttribute(element,attr){
+ if(attr==='label'&&element.tagName!=='OPTGROUP')return;
+ const value=element.getAttribute(attr);
+ if(value===null||!value.trim())return;
+ const next=translateNode(element,attr,value);
+ if(next!==value)element.setAttribute(attr,next);
+}
+function translateSubtree(root){
+ if(root.nodeType===Node.TEXT_NODE){
+  if(!root.parentElement?.closest(ignoredElements))translateText(root);
+  return;
+ }
+ if(root.nodeType!==Node.ELEMENT_NODE||root.closest(ignoredElements))return;
+ for(const attr of translatedAttributes)translateAttribute(root,attr);
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT,{
+  acceptNode:node=>node.nodeType===Node.ELEMENT_NODE&&node.matches(ignoredElements)?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT,
+ });
+ for(let node=walker.nextNode();node;node=walker.nextNode()){
+  if(node.nodeType===Node.TEXT_NODE)translateText(node);
+  else for(const attr of translatedAttributes)translateAttribute(node,attr);
+ }
+}
+function observeLanguage(){
+ observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:translatedAttributes});
+}
+const observer=new MutationObserver(changes=>{
+ observer.disconnect();
+ for(const change of changes){
+  if(!document.body.contains(change.target))continue;
+  if(change.type==='attributes')translateAttribute(change.target,change.attributeName);
+  else if(change.type==='characterData')translateSubtree(change.target);
+  else for(const node of change.addedNodes)if(document.body.contains(node))translateSubtree(node);
+ }
+ observeLanguage();
+});
 function applyLanguage(){
  observer.disconnect();document.documentElement.lang=language;
- const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node;
- while(node=walker.nextNode()){if(node.parentElement.closest('script,style'))continue;const next=translateNode(node,'text',node.nodeValue);if(next!==node.nodeValue)node.nodeValue=next;}
- for(const el of document.querySelectorAll('[aria-label],[title],[placeholder],[alt],optgroup[label]'))for(const attr of ['aria-label','title','placeholder','alt','label'])if(el.hasAttribute(attr)){const next=translateNode(el,attr,el.getAttribute(attr));if(next!==el.getAttribute(attr))el.setAttribute(attr,next);}
+ translateSubtree(document.body);
  document.querySelectorAll('[data-language]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.language===language)));
- observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-label','title','placeholder','alt','label']});
+ observeLanguage();
 }
 const switcher=document.createElement('div');switcher.style.cssText='display:flex;gap:8px;align-items:center';switcher.setAttribute('aria-label','Language');
 for(const [code,label] of [['ru','RU'],['en','ENG']]){const button=document.createElement('button');button.textContent=label;button.dataset.language=code;button.style.cssText='padding:8px 12px;border:1px solid #88a65a;border-radius:12px;background:#1c291e;color:#d6e1cc;cursor:pointer';button.onclick=()=>{language=code;try{localStorage.setItem('zm-rush-language',code);}catch{}applyLanguage();window.dispatchEvent(new CustomEvent('zm-rush:languagechange',{detail:language}));};switcher.append(button);}

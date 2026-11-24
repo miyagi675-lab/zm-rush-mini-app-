@@ -7,7 +7,7 @@ import {modelAssets} from '../model-assets.js';
 import {modelGroups, modelPreview} from '../model-groups.js';
 import {modelPrices} from '../model-prices.js';
 import {weapons} from '../weapon-catalog.js';
-import {prepareWeapon} from '../weapon-browser.js';
+import {prepareWeapon} from '../weapon-fit.js';
 import {Triangle, Vector3} from '../vendor/three.module.js';
 
 const site = new URL('../', import.meta.url);

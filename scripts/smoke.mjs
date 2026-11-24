@@ -11,7 +11,9 @@ const require = createRequire(import.meta.url);
 const {chromium} = process.env.MINI_APP_PLAYWRIGHT_PATH
   ? require(process.env.MINI_APP_PLAYWRIGHT_PATH)
   : require('playwright-core');
-const site = fileURLToPath(new URL('../', import.meta.url));
+const site = process.env.MINI_APP_SITE_ROOT
+  ? resolve(process.env.MINI_APP_SITE_ROOT)
+  : fileURLToPath(new URL('../', import.meta.url));
 const mount = '/zm-rush-mini-app-/';
 const contentTypes = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -297,9 +299,9 @@ async function assertMotionActions(page) {
   assert.equal(await motion.locator('option:disabled').count(), 0, 'CT must offer every catalog action');
   assert.equal(await motion.locator('optgroup').count(), 3);
 
-  const showStudio = async () => {
+  const showStudio = async (playing = true) => {
     await page.evaluate(() => window.scrollTo({top: 0, behavior: 'instant'}));
-    await waitForStudioDraw(page);
+    if (playing) await waitForStudioDraw(page);
   };
   const select = async id => {
     await motion.selectOption(id);
@@ -308,15 +310,16 @@ async function assertMotionActions(page) {
     await showStudio();
   };
   const assertPoseStopped = async () => {
-    const writes = await page.evaluate(async () => {
+    const changes = await page.evaluate(async () => {
       const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
       await frame();
       await frame();
       const before = window.studioPoseWrites;
+      const drawsBefore = window.studioDraws;
       for (let i = 0; i < 8; i++) await frame();
-      return window.studioPoseWrites - before;
+      return {writes:window.studioPoseWrites - before,draws:window.studioDraws - drawsBefore};
     });
-    assert.equal(writes, 0, 'A paused or ended animation must stop updating its mesh');
+    assert.deepEqual(changes,{writes:0,draws:0},'An unchanged paused or ended preview must stop uploading and drawing');
   };
   const ended = async () => {
     await page.waitForFunction(() => document.getElementById('pause').textContent === 'Повторить', null, {timeout: 15000});
@@ -376,7 +379,7 @@ async function assertMotionActions(page) {
   await page.waitForFunction(before => window.studioPoseWrites > before, beforePause);
   await pauseMotion.click();
   assert.equal(await pauseMotion.getAttribute('aria-pressed'), 'true');
-  await showStudio();
+  await showStudio(false);
   await assertPoseStopped();
   await pauseMotion.click();
   assert.equal(await pauseMotion.getAttribute('aria-pressed'), 'false');
@@ -387,7 +390,7 @@ async function assertMotionActions(page) {
   for (const action of ['jump', 'longjump', 'reload', 'shoot']) await assertRepeating(action);
 
   await pauseMotion.click();
-  await showStudio();
+  await showStudio(false);
   const {changes: pausedChanges, restarts: pausedRestarts} = await observeGeometry(3800);
   assert.equal(pausedChanges.length, 1, 'Pause must freeze the repeat countdown across a full interval');
   assert.equal(pausedRestarts.length, 0);
@@ -548,6 +551,11 @@ try {
       await loadOk(page);
       assert.equal(await page.locator('#motion').inputValue(), 'walk');
       assert.equal(await page.locator('#tab-models').getAttribute('aria-selected'), 'true');
+      for (const spelling of ['елка', 'ёлка']) {
+        await page.locator('#model-search').fill(spelling);
+        assert.deepEqual(await page.locator('#model-items [data-model-id]').evaluateAll(cards =>
+          cards.map(card => card.dataset.modelId)), ['xmastree']);
+      }
       await page.locator('#model-search').fill('Скирк');
       await page.locator('[data-model-id="p_skirk"] .model-pick').click();
       await loadOk(page);
@@ -609,6 +617,7 @@ try {
       assert.equal(await page.locator('#model-price').textContent(), '$30 / месяц');
       assert.equal(await page.locator('#cart-add').isEnabled(), false, 'Selected offer must reflect a direct add');
       await page.locator('#tab-hats').click();
+      await page.locator('#quick-preview').click();
       await page.evaluate(() => window.scrollTo(0, 600));
       await page.waitForFunction(() => {
         const {top, bottom} = document.getElementById('viewport').getBoundingClientRect();
@@ -619,6 +628,7 @@ try {
       const hat = await bunnyCard.locator('.item-name').textContent();
       await addFromCard(page, bunnyCard, hat, 2);
       assert.equal(await page.locator('#hat-price').isVisible(), false);
+      await page.locator('#quick-preview').click();
       await bunnyCard.locator('.item-pick').click();
       await page.locator('#purchase-options').waitFor({state: 'visible'});
       await assertPurchase(page, hat, /^\$8 \/ месяц$/);

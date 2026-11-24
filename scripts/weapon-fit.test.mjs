@@ -5,7 +5,7 @@ import test from 'node:test';
 import {parseMDL, disposeMDL} from '../mdl.js';
 import {modelAssets} from '../model-assets.js';
 import {weapons} from '../weapon-catalog.js';
-import {prepareWeapon, fitWeapon} from '../weapon-browser.js';
+import {prepareWeapon, fitWeapon} from '../weapon-fit.js';
 import {applyMotionPose, resolveMotion} from '../motion.js';
 import {Box3, Triangle, Vector3} from '../vendor/three.module.js';
 

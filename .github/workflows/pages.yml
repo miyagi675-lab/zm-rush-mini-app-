@@ -28,14 +28,12 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: node --test scripts/motion.test.mjs scripts/cart.test.mjs scripts/weapon-fit.test.mjs scripts/asset-loader.test.mjs scripts/preview-textures.test.mjs bot/worker.test.mjs bot/language.test.mjs
+      - name: Prepare static site
+        run: node scripts/build-pages.mjs "$RUNNER_TEMP/pages"
       - run: npx playwright-core install --with-deps chromium
       - run: npm run test:browser
-      - name: Prepare static site
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        run: |
-          mkdir -p "$RUNNER_TEMP/pages"
-          cp -- ./*.js ./*.css index.html logo.svg "$RUNNER_TEMP/pages/"
-          cp -r -- assets vendor "$RUNNER_TEMP/pages/"
+        env:
+          MINI_APP_SITE_ROOT: ${{ runner.temp }}/pages
       - name: Upload checked site
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4

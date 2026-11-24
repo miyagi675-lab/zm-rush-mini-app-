@@ -3,8 +3,10 @@
 const SELLER='https://t.me/name_f1';
 const CATALOG='https://miyagi675-lab.github.io/zm-rush-mini-app-/';
 function catalogUrl(lang,tab){const url=new URL(CATALOG);if(tab)url.searchParams.set('tab',tab);url.searchParams.set('lang',lang);return url.href;}
-const GRENADE_VIDEO_SOURCE='https://raw.githubusercontent.com/miyagi675-lab/zm-rush-mini-app-/main/grenade-modes.mp4';
-const GRENADE_VIDEO_PAGE='https://github.com/miyagi675-lab/zm-rush-mini-app-/blob/main/grenade-modes.mp4';
+const GRENADE_VIDEO_REVISION='c6c12c531e2724bb5cf2a8cc77466d2b8b38b0c7';
+const GRENADE_VIDEO_SOURCE='https://raw.githubusercontent.com/miyagi675-lab/zm-rush-mini-app-/'+GRENADE_VIDEO_REVISION+'/grenade-modes.mp4';
+const GRENADE_VIDEO_PAGE='https://github.com/miyagi675-lab/zm-rush-mini-app-/blob/'+GRENADE_VIDEO_REVISION+'/grenade-modes.mp4';
+const GRENADE_VIDEO_CACHE_KEY='bot:media:grenade-modes:'+GRENADE_VIDEO_REVISION;
 const BOT_USERNAME='zm_rushbot';
 export const privileges=[
  {id:1,title:'Режимы гранат HE / Flash',description:'Специальные режимы использования гранат HE и Flash: Impact / Standard. Уточните у продавца условия использования режимов на сервере ZE.'},
@@ -282,9 +284,41 @@ async function api(token,method,body){
  }
  const response=await fetch('https://api.telegram.org/bot'+token+'/'+method,{method:'POST',...request,signal:AbortSignal.timeout(method==='sendVideo'?25000:10000)});
  const data=await response.json();
- if(!response.ok||!data.ok){if(method==='editMessageText'&&data.description?.includes('message is not modified'))return true;throw Error('Telegram API request failed: '+method);}
+ if(!response.ok||!data.ok){
+  if(method==='editMessageText'&&data.description?.includes('message is not modified'))return true;
+  const error=Error('Telegram API request failed');
+  error.method=method;
+  error.status=data.error_code||response.status;
+  error.invalidVideoId=method==='sendVideo'&&error.status===400&&/file[_ ]?id|file identifier/i.test(data.description||'');
+  throw error;
+ }
  return data.result;
 }
+
+async function sendGrenadeVideo(call,preferences,chatId,messageId){
+ const payload={
+  chat_id:chatId,
+  supports_streaming:true,
+  reply_parameters:{message_id:messageId,allow_sending_without_reply:true},
+ };
+ let fileId;
+ try{fileId=await preferences?.get(GRENADE_VIDEO_CACHE_KEY);}catch{}
+ if(fileId){
+  try{
+   await call('sendVideo',{...payload,video:fileId});
+   return;
+  }catch(error){
+   // Only try the original upload after an explicit invalid-file response.
+   // A timeout leaves it unclear whether the cached video was already sent.
+   if(!error.invalidVideoId)throw error;
+  }
+ }
+ const sent=await call('sendVideo',{...payload,video:GRENADE_VIDEO_SOURCE});
+ if(typeof sent?.video?.file_id==='string'){
+  try{await preferences?.put(GRENADE_VIDEO_CACHE_KEY,sent.video.file_id);}catch{}
+ }
+}
+
 export async function handleUpdate(update,call,preferences){
  const cb=update.callback_query;
  if(cb){
@@ -302,12 +336,8 @@ export async function handleUpdate(update,call,preferences){
   await call('answerCallbackQuery',{callback_query_id:cb.id,...(!response?{text:copy[lang].stale}:{})});
   if(response)await call('editMessageText',{chat_id:cb.message.chat.id,message_id:cb.message.message_id,...response});
   if(action==='ze:item:1'){
-   await call('sendVideo',{
-    chat_id:cb.message.chat.id,
-    video:GRENADE_VIDEO_SOURCE,
-    supports_streaming:true,
-    reply_parameters:{message_id:cb.message.message_id,allow_sending_without_reply:true},
-   }).catch(async()=>{
+   await sendGrenadeVideo(call,preferences,cb.message.chat.id,cb.message.message_id).catch(async error=>{
+    console.warn({event:'grenade_video_fallback',status:error.status});
     await call('sendMessage',{chat_id:cb.message.chat.id,text:GRENADE_VIDEO_PAGE});
    });
   }
@@ -322,6 +352,33 @@ export async function handleUpdate(update,call,preferences){
   ? languagePrompt(opensShop?'shop':'home',lang)
   : opensShop?shop(lang||'ru'):command==='/catalog'?catalog(lang||'ru'):home(lang||'ru');
  await call('sendMessage',{chat_id:message.chat.id,...response});
+}
+
+// Telegram retries updates. Coalesce duplicates in the same Worker instance.
+// KV is not used as a lock because writes can take time to appear elsewhere.
+const recentUpdates=new Map();
+const completedUpdateTtlMs=5*60*1000;
+const maxRecentUpdates=256;
+
+export async function handleUpdateOnce(update,run){
+ const id=update.update_id;
+ if(!Number.isSafeInteger(id))return run();
+ const previous=recentUpdates.get(id);
+ if(previous&&(!previous.expiresAt||previous.expiresAt>Date.now()))return previous.promise;
+ const current={promise:Promise.resolve().then(run),expiresAt:0};
+ recentUpdates.set(id,current);
+ try{
+  const result=await current.promise;
+  const now=Date.now();
+  current.expiresAt=now+completedUpdateTtlMs;
+  for(const [key,entry] of recentUpdates){
+   if(entry.expiresAt&&(entry.expiresAt<=now||recentUpdates.size>maxRecentUpdates))recentUpdates.delete(key);
+  }
+  return result;
+ }catch(error){
+  if(recentUpdates.get(id)===current)recentUpdates.delete(id);
+  throw error;
+ }
 }
 const safeEqual=(a,b)=>{if(typeof a!=='string'||typeof b!=='string'||a.length!==b.length)return false;let diff=0;for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);return diff===0;};
 async function miniAppUser(initData,token){
@@ -385,10 +442,24 @@ export default {async fetch(request,env,context){
  if(!safeEqual(request.headers.get('x-telegram-bot-api-secret-token'),await webhookSecret(env.BOT_TOKEN)))return text('Forbidden',403);
  if(Number(request.headers.get('content-length'))>262144)return text('Request too large',413);
  let update;try{update=await request.json();}catch{return text('Invalid update',400);}
- const call=(method,body)=>api(env.BOT_TOKEN,method,body);
+ if(!update||typeof update!=='object'||Array.isArray(update))return text('Invalid update',400);
+ const call=async(method,body)=>{
+  try{return await api(env.BOT_TOKEN,method,body);}
+  catch(error){error.method=method;throw error;}
+ };
+ const started=Date.now();
  try{
-  await handleUpdate(update,call,env.ZMRUSH_LANGUAGES);
+  await handleUpdateOnce(update,()=>handleUpdate(update,call,env.ZMRUSH_LANGUAGES));
   context?.waitUntil(syncCommands(call,env.ZMRUSH_LANGUAGES).catch(()=>{}));
   return text('ok');
- }catch{return text('Temporary Telegram error',502);}
+ }catch(error){
+  console.error({
+   event:'telegram_update_failed',
+   updateId:Number.isSafeInteger(update.update_id)?update.update_id:undefined,
+   method:error.method,
+   status:error.status,
+   durationMs:Date.now()-started,
+  });
+  return text('Temporary Telegram error',502);
+ }
 }};

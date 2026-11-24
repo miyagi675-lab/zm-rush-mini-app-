@@ -1,16 +1,28 @@
 import {modelGroups,modelGroupById,modelPreview} from './model-groups.js?v=5';
 import {createPreviewLoader} from './preview-loader.js?v=1';
+import {normalizeCatalogSearch} from './catalog-search.js?v=1';
 
-export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()=>true,initialTab=null,createCartButton,priceLabel=()=>''}){
+const cardStatus = {
+ unavailable: 'Примерка недоступна',
+ loading: 'Загрузка…',
+ selected: 'Выбрано',
+ available: 'Смотреть в 3D',
+};
+
+export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()=>true,isSceneAvailable=()=>true,initialTab=null,createCartButton,priceLabel=()=>''}){
  const $=id=>document.getElementById(id),byId=new Map(models.map(m=>[m.id,m]));
+ const searchById=new Map(models.map(model=>[
+  model.id, normalizeCatalogSearch([model.name,model.nameEn||english(model.name),model.id].join(' ')),
+ ]));
  const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))||fallback;}catch{return fallback;}};
  const store=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
  const savedFavorites=read('zm-rush-model-favorites',[]),savedRecent=read('zm-rush-model-recent',[]);
  const favorites=new Set((Array.isArray(savedFavorites)?savedFavorites:[]).filter(id=>byId.has(id)));
  let recent=(Array.isArray(savedRecent)?savedRecent:[]).filter(id=>byId.has(id)),category='all',busy=false,pending=null,rendered=false;
- const list=$('model-items'),search=$('model-search'),filters=$('model-filters');
+ const list=$('model-items'),search=$('model-search'),filters=$('model-filters'),sort=$('model-sort');
  const loadModelPreviews = createPreviewLoader();
  const tabs = ['hats','models','weapons'];
+ const grids = {hats:$('items'),models:list,weapons:$('weapon-items')};
  let activeTab = 'hats';
  const displayName=model=>document.documentElement.lang==='en'?(model.nameEn||english(model.name)):model.name;
  function button(text,fn){const el=document.createElement('button');el.type='button';el.textContent=text;el.onclick=fn;return el;}
@@ -21,9 +33,7 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
   if(tab==='models'&&!rendered)render();
   if(focus)$('tab-'+tab).focus({preventScroll:true});
   if(resetScroll){
-   if (tab==='models') list.scrollTop=0;
-   if (tab==='hats') $('items').scrollTop=0;
-   if (tab==='weapons') $('weapon-items').scrollTop=0;
+   grids[tab].scrollTop=0;
    if(matchMedia('(max-width:800px)').matches){
     const catalogTop=document.querySelector('.catalog').getBoundingClientRect().top+window.scrollY;
     const previewHeight=document.querySelector('.studio').getBoundingClientRect().height;
@@ -60,25 +70,29 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
   const el=button(group.name,()=>{category=group.id;render();});el.dataset.modelFilter=group.id;el.setAttribute('aria-pressed','false');filters.append(el);
  }
  function syncCards(){
-  for(const card of list.children){const id=card.dataset.modelId,active=id===selectedId&&isReady(),loading=busy&&id===pending;
+  const available=isSceneAvailable();
+  const ready=available&&isReady();
+  for(const card of list.children){const id=card.dataset.modelId,active=id===selectedId&&ready,loading=busy&&id===pending;
    card.classList.toggle('selected',active);card.classList.toggle('is-loading',loading);
-   const pick=card.querySelector('.model-pick');pick.disabled=busy;pick.setAttribute('aria-pressed',String(active));pick.setAttribute('aria-busy',String(loading));
+   const pick=card.querySelector('.model-pick');pick.disabled=busy||!available;pick.setAttribute('aria-pressed',String(active));pick.setAttribute('aria-busy',String(loading));
    card.querySelector('.model-check').hidden=!active;
-   card.querySelector('.model-card-status').textContent=loading?'Загрузка…':active?'Выбрано':'Смотреть в 3D';
+   const status=card.querySelector('.model-card-status');
+   const state=!available?'unavailable':loading?'loading':active?'selected':'available';
+   if (status.dataset.state!==state) {
+    status.dataset.state=state;
+    status.textContent=cardStatus[state];
+   }
   }
  }
- function render(keepScroll=false){
-  const scrollTop=keepScroll===true?list.scrollTop:0;
-  rendered=true;const term=search.value.trim().toLocaleLowerCase('ru');
-  let visible=models.filter(m=>{const group=modelGroups.find(g=>g.id===category);return (category==='all'||category==='favorites'&&favorites.has(m.id)||category==='recent'&&recent.includes(m.id)||group?.models.includes(m.id))&&(!term||(m.name+' '+(m.nameEn||english(m.name))).toLocaleLowerCase('ru').includes(term));});
-  if(category==='recent')visible.sort((a,b)=>recent.indexOf(a.id)-recent.indexOf(b.id));
-  else if($('model-sort').value==='name')visible.sort((a,b)=>displayName(a).localeCompare(displayName(b),document.documentElement.lang));
-  $('model-count').textContent=visible.length+' / '+models.length;
-  for(const el of filters.children){const active=el.dataset.modelFilter===category;el.classList.toggle('active',active);el.setAttribute('aria-pressed',String(active));}
-  $('model-sort').disabled=category==='recent';const fragment=document.createDocumentFragment();
-  for(const model of visible){
+ function syncFavorite(button,model){
+  const selected=favorites.has(model.id);
+  button.textContent=selected?'★':'☆';
+  button.setAttribute('aria-label',(selected?'Убрать модель из избранного: ':'Добавить модель в избранное: ')+model.name);
+  button.setAttribute('aria-pressed',String(selected));
+ }
+ function createModelCard(model){
    const group=modelGroupById.get(model.id),card=document.createElement('article');card.className='model-card';card.dataset.modelId=model.id;
-   const pick=button('',async()=>{if(busy||model.id===selectedId&&isReady())return;
+   const pick=button('',async()=>{if(busy||!isSceneAvailable()||model.id===selectedId&&isReady())return;
     pending=model.id;setBusy(true);try{await onChoose(model.id);}finally{pending=null;setBusy(false);}
    });pick.className='model-pick';pick.setAttribute('aria-label','Выбрать модель: '+model.name);
    const picture=document.createElement('div');picture.className='model-picture';
@@ -89,13 +103,52 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
    const price=document.createElement('span');price.className='catalog-item-price';price.textContent=priceLabel(model);
    const status=document.createElement('span');status.className='model-card-status';
    pick.append(picture,name,genre,price,status);
-   const fav=button(favorites.has(model.id)?'★':'☆',()=>{favorites.has(model.id)?favorites.delete(model.id):favorites.add(model.id);store('zm-rush-model-favorites',[...favorites]);render(true);const next=list.querySelector('[data-model-id="'+model.id+'"] .model-favorite');(next||filters.querySelector('[data-model-filter="favorites"]')).focus({preventScroll:true});});fav.className='model-favorite';fav.setAttribute('aria-label',(favorites.has(model.id)?'Убрать модель из избранного: ':'Добавить модель в избранное: ')+model.name);fav.setAttribute('aria-pressed',String(favorites.has(model.id)));
+   const fav=button('',()=>{
+    if(favorites.has(model.id))favorites.delete(model.id);
+    else favorites.add(model.id);
+    store('zm-rush-model-favorites',[...favorites]);
+    syncFavorite(fav,model);
+    if(category==='favorites'&&!favorites.has(model.id)){
+     const neighbor=(card.nextElementSibling||card.previousElementSibling)?.querySelector('.model-favorite');
+     render(true);
+     (neighbor||filters.querySelector('[data-model-filter="favorites"]')).focus({preventScroll:true});
+    }
+   });
+   fav.className='model-favorite';
+   syncFavorite(fav,model);
    const check=document.createElement('span');check.className='model-check';check.textContent='✓';check.setAttribute('aria-hidden','true');card.append(pick,fav,check);
    const cartButton = createCartButton?.(model);
    if (cartButton) card.append(cartButton);
-   fragment.append(card);
+   return card;
+ }
+ function render(keepScroll=false){
+  const scrollTop=keepScroll===true?list.scrollTop:0;
+  rendered=true;
+  const term=normalizeCatalogSearch(search.value);
+  const group=modelGroups.find(group=>group.id===category);
+  const acceptedIds=category==='favorites'?favorites:category==='recent'?new Set(recent):
+   category==='all'?null:new Set(group?.models);
+  const visible=models.filter(model=>(!acceptedIds||acceptedIds.has(model.id))&&searchById.get(model.id).includes(term));
+  if(category==='recent')visible.sort((a,b)=>recent.indexOf(a.id)-recent.indexOf(b.id));
+  else if(sort.value==='name')visible.sort((a,b)=>displayName(a).localeCompare(displayName(b),document.documentElement.lang));
+  $('model-count').textContent=visible.length+' / '+models.length;
+  for(const el of filters.children){const active=el.dataset.modelFilter===category;el.classList.toggle('active',active);el.setAttribute('aria-pressed',String(active));}
+  sort.disabled=category==='recent';
+  const visibleIds=new Set(visible.map(model=>model.id));
+  const existingCards=new Map();
+  for(const card of Array.from(list.children)){
+   if(visibleIds.has(card.dataset.modelId))existingCards.set(card.dataset.modelId,card);
+   else card.remove();
   }
-  list.replaceChildren(fragment);list.scrollTop=scrollTop;
+  const target=existingCards.size?list:document.createDocumentFragment();
+  let cursor=target.firstElementChild;
+  for(const model of visible){
+   const card=existingCards.get(model.id)||createModelCard(model);
+   if(card===cursor)cursor=cursor.nextElementSibling;
+   else target.insertBefore(card,cursor);
+  }
+  if(target!==list)list.append(target);
+  list.scrollTop=scrollTop;
   loadModelPreviews(list);
   const empty=!visible.length;$('model-empty').hidden=!empty;
   $('model-empty-title').textContent=category==='favorites'&&!term?'В избранном пока пусто':category==='recent'&&!term?'Здесь появятся выбранные модели':'Модель не найдена';
@@ -104,19 +157,18 @@ export function setupModelBrowser({models,selectedId,onChoose,english,isReady=()
  }
  function setBusy(value){busy=value;syncCards();}
  function setSelected(id,remember=true){if(!byId.has(id))return;selectedId=id;if(remember){recent=[id,...recent.filter(x=>x!==id)].slice(0,12);store('zm-rush-model-recent',recent);}if(rendered&&category==='recent')render();else syncCards();}
- search.oninput=render;$('model-sort').onchange=render;
+ search.oninput=render;sort.onchange=render;
  $('model-reset').onclick=()=>{search.value='';category='all';render();};
- window.addEventListener('zm-rush:languagechange',()=>{if(rendered)render();});
+ window.addEventListener('zm-rush:languagechange',()=>{if(rendered&&sort.value==='name'&&category!=='recent')render(true);});
  const topButton=$('back-to-top');let scrollFrame=0;
  function updateBackToTop(){
-  const activeList=activeTab==='models'?list:activeTab==='hats'?$('items'):null;
-  topButton.hidden=Math.max(window.scrollY,activeList?.scrollTop||0)<=Math.max(240,window.innerHeight*.5);
+  topButton.hidden=Math.max(window.scrollY,grids[activeTab].scrollTop)<=Math.max(240,window.innerHeight*.5);
  }
  function scheduleScrollUpdate(){if(scrollFrame)return;scrollFrame=requestAnimationFrame(()=>{scrollFrame=0;updateBackToTop();});}
  window.addEventListener('scroll',scheduleScrollUpdate,{passive:true});window.addEventListener('resize',scheduleScrollUpdate);
- for(const grid of [$('items'),list])grid.addEventListener('scroll',scheduleScrollUpdate,{passive:true});
- topButton.onclick=()=>{for(const grid of [$('items'),list])grid.scrollTop=0;window.scrollTo({top:0,behavior:'auto'});document.querySelector('.brand').focus({preventScroll:true});updateBackToTop();};
+ for(const grid of Object.values(grids))grid.addEventListener('scroll',scheduleScrollUpdate,{passive:true});
+ topButton.onclick=()=>{for(const grid of Object.values(grids))grid.scrollTop=0;window.scrollTo({top:0,behavior:'auto'});document.querySelector('.brand').focus({preventScroll:true});updateBackToTop();};
  const savedTab = read('zm-rush-catalog-tab','hats');
- showTab(initialTab ?? (tabs.includes(savedTab) ? savedTab : 'hats'),false,false);
+ showTab(tabs.includes(initialTab) ? initialTab : tabs.includes(savedTab) ? savedTab : 'hats',false,false);
  return {setBusy,setSelected};
 }
