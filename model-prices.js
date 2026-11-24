@@ -179,4 +179,5 @@ export const modelPrices = Object.freeze({
   'p2_tlizard': monthly(10), // 174. Том · ящерица
   'p2_umas1_v3': monthly(10), // 175. Голд Шип
   sugar: monthly(10),
+  xmastree: monthly(10),
 });

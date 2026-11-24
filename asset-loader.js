@@ -1,4 +1,4 @@
-import {modelAssets} from './model-assets.js?v=8';
+import {modelAssets} from './model-assets.js?v=9';
 // Share downloads, keep successful buffers in memory, and reuse persistent data.
 const pending=new Map(),cacheName='zm-rush-models-v1';
 const maxCachedModels = 60;

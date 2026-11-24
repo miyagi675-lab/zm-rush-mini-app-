@@ -160,7 +160,8 @@ export const modelGroups=[
    "p2_peakscout",
    "p2_scorpion",
    "p2_squigly",
-   "sugar"
+   "sugar",
+   "xmastree"
   ]
  },
  {

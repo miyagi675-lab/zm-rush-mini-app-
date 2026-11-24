@@ -2090,6 +2090,12 @@ export const extraPlayerModels=[
   "name": "Шугар",
   "nameEn": "Sugar",
   "file": "players-v1/sugar.mdl"
+ },
+ {
+  "id": "xmastree",
+  "name": "Новогодняя ёлка",
+  "nameEn": "Christmas Tree",
+  "file": "players-v1/xmastree.mdl"
  }
 ];
 export const playerNamePairs=extraPlayerModels.map(model=>[model.name,model.nameEn]);
