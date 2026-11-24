@@ -1,3 +1,18 @@
+export const featuredPlayerModels=[
+ {
+  "id": "sugar",
+  "name": "Шугар",
+  "nameEn": "Sugar",
+  "file": "players-v1/sugar.mdl"
+ },
+ {
+  "id": "xmastree",
+  "name": "Новогодняя ёлка",
+  "nameEn": "Christmas Tree",
+  "file": "players-v1/xmastree.mdl"
+ }
+];
+
 export const extraPlayerModels=[
  {
   "id": "p_14_kopishon",
@@ -2084,18 +2099,6 @@ export const extraPlayerModels=[
     -0.057
    ]
   }
- },
- {
-  "id": "sugar",
-  "name": "Шугар",
-  "nameEn": "Sugar",
-  "file": "players-v1/sugar.mdl"
- },
- {
-  "id": "xmastree",
-  "name": "Новогодняя ёлка",
-  "nameEn": "Christmas Tree",
-  "file": "players-v1/xmastree.mdl"
  }
 ];
-export const playerNamePairs=extraPlayerModels.map(model=>[model.name,model.nameEn]);
+export const playerNamePairs=[...featuredPlayerModels,...extraPlayerModels].map(model=>[model.name,model.nameEn]);

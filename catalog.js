@@ -1,4 +1,4 @@
-import {extraPlayerModels} from './player-catalog.js?v=11';
+import {extraPlayerModels,featuredPlayerModels} from './player-catalog.js?v=12';
 export const entries=[...[['alkash','Алкаш','heroes'],['batman','Бэтмен','heroes'],['bunny','Заяц','animals'],['capitan','Капитан','heroes'],['cheburashka','Чебурашка','heroes'],['cow','Корова','animals'],['devil','Дьявол','other'],['enot','Енот','animals'],['gena','Крокодил Гена','heroes'],['genki','Генки','heroes'],['jason','Джейсон','heroes'],['knight','Рыцарь','other'],['knuckles','Наклз','heroes'],['kot','Кот','animals'],['mau5','Deadmau5','other'],['mishka','Мишка','animals'],['pantera','Пантера','animals'],['pharoah','Фараон','other'],['pony','Пони','animals'],['pony_v2','Пони · коллекция','animals'],['saw','Пила','heroes'],['scarecrow','Пугало','other'],['shine','Shine','other'],['slash','Слэш','heroes'],['sonic','Соник','heroes'],['superman','Супермен','heroes'],['terrible','Ужас','other'],['wolf','Волк','animals']],
 ["emodzi","Эмодзи","other"],
 ["farmer","Фермер","other"],
@@ -59,4 +59,9 @@ export const entries=[...[['alkash','Алкаш','heroes'],['batman','Бэтме
 ["t_pony_hat","Пони · новая версия","animals"],
 ["v_mask","Маска Гая Фокса","heroes"]
 ].map(([id,name,category])=>({id,name,category}));
-export const playerModels=[{id:'gign',name:'CT',file:'gign.mdl',hatScale:1},{id:'dobby',name:'Добби',file:'models/dobby.mdl',hatScale:{head:.8,body:.5}},...extraPlayerModels];
+export const playerModels=[
+ {id:'gign',name:'CT',file:'gign.mdl',hatScale:1},
+ ...featuredPlayerModels,
+ {id:'dobby',name:'Добби',file:'models/dobby.mdl',hatScale:{head:.8,body:.5}},
+ ...extraPlayerModels,
+];
