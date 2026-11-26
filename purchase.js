@@ -13,8 +13,8 @@ const periods = new Map([
   ['year', 'год'],
 ]);
 
-export function productPrice(price) {
-  if (!price || !Number.isFinite(price.amount) || price.amount < 0) return 'Цена по запросу';
+export function productPrice(price, type) {
+  if (!price || !Number.isFinite(price.amount) || price.amount < 0) return type === 'hat' ? '?' : 'Цена по запросу';
   if (price.amount === 0) return 'Бесплатно';
 
   const amount = new Intl.NumberFormat(price.currency === 'USD' ? 'en-US' : 'ru-RU', {
@@ -182,7 +182,7 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
       const title = document.createElement('strong');
       title.textContent = product.name;
       const meta = document.createElement('small');
-      meta.textContent = productTypes.get(product.type) + ' · ' + productPrice(product.price);
+      meta.textContent = productTypes.get(product.type) + ' · ' + productPrice(product.price, product.type);
       details.append(title, meta);
 
       const remove = document.createElement('button');
@@ -242,7 +242,7 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     selected = products.get(selectedType);
     name.textContent = selected?.name || 'Товар не выбран';
     price.hidden = !selected;
-    price.textContent = selected ? productPrice(selected.price) : '';
+    price.textContent = selected ? productPrice(selected.price, selected.type) : '';
     const inCart = selected && cartKeys.has(productKey(selected));
     add.textContent = inCart ? 'Уже в корзине' : 'Добавить в корзину';
     add.disabled = busy || !selected || Boolean(inCart);

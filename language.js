@@ -185,6 +185,37 @@ const pairs=`Маленькие скины|Small skins
 Категории|Categories
 Ракурсы|Camera angles
 3D-примерочная|3D fitting room
+Шлем с алыми рогами|Crimson Horn Helmet
+Синий фамильяр|Blue Familiar
+Розовый фамильяр|Pink Familiar
+Шлем тёмного рыцаря|Dark Knight Helmet
+Чёрная пантера|Black Panther
+Боксёрский шлем|Boxing Headgear
+Рыба за спиной|Fish on the Back
+Походный фонарь|Camping Lantern
+Маска с трубкой|Snorkel Mask
+Комплект диджея|DJ Set
+Набор костюмов · 12 вариантов|Costume Set · 12 Variants
+Курочка Коко|Koko the Chicken
+Золотая корона|Golden Crown
+Кот в кепке|Cat in a Cap
+Львиная грива|Lion's Mane
+Масяня|Masyanya
+Пингвин за спиной|Penguin on the Back
+Шапка белого медведя|Polar Bear Beanie
+Мишень за спиной|Target on the Back
+Яблоко со стрелой|Apple and Arrow
+Пояс со стрелкой|Arrow Belt
+Привидение за спиной|Ghost on the Back
+Тыква в шляпе|Witch Hat Pumpkin
+Платок шейха|Sheikh's Headscarf
+Носок с подарками|Christmas Stocking
+Голова снеговика|Snowman Head
+Жёлудь за спиной|Acorn Backpack
+Мордочка белки|Squirrel Face
+Ушки белки|Squirrel Ears
+Беличий хвост|Squirrel Tail
+Титан за спиной|Titan on the Back
 Алкаш|Drunkard
 Бэтмен|Batman
 Заяц|Bunny

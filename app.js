@@ -1,11 +1,11 @@
-import {productPrice,setupPurchase} from './purchase.js?v=14';
-import {english} from './language.js?v=25';
-import {entries,playerModels} from './catalog.js?v=15';
+import {productPrice,setupPurchase} from './purchase.js?v=15';
+import {english} from './language.js?v=26';
+import {entries,playerModels} from './catalog.js?v=16';
 import {loadModel as load,prefetchModel,invalidateModel} from './asset-loader.js?v=12';
 import {setupModelBrowser} from './model-browser.js?v=16';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPrices} from './model-prices.js?v=6';
-import {setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=17';
+import {setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=18';
 import {hatPrices} from './hat-prices.js?v=1';
 import {weapons} from './weapon-catalog.js?v=7';
 import {motionDefinitions,resolveMotion,applyMotionPose,advanceMotionClock} from './motion.js?v=2';
@@ -153,7 +153,7 @@ function renderCatalog(){
   const img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';img.width=256;img.height=256;img.dataset.preview='assets/previews-v2/'+e.id+'.webp';
   const name=document.createElement('span');name.className='item-name';name.textContent=e.name;
   const category=document.createElement('span');category.className='item-type';category.textContent=categories[e.category];
-  const price=document.createElement('span');price.className='catalog-item-price';price.textContent=productPrice(hatPrices[e.id]);
+  const price=document.createElement('span');price.className='catalog-item-price';price.textContent=productPrice(hatPrices[e.id], 'hat');
   pick.append(img,name,category,price);pick.onclick=()=>selectLook(e,{},true);pick.onpointerenter=pick.onfocus=()=>{if(ready)prefetchModel('hats/'+e.id+'.mdl');};
   const fav=document.createElement('button');fav.className='favorite';fav.textContent=favorites.has(e.id)?'★':'☆';fav.title=favorites.has(e.id)?'Убрать из избранного':'Добавить в избранное';fav.setAttribute('aria-label',fav.title);fav.setAttribute('aria-pressed',String(favorites.has(e.id)));
   fav.onclick=()=>{
@@ -221,7 +221,7 @@ function refreshPreviewPrices() {
   const prices = $('studio-prices');
   const modelPrice = modelPrices[player.id] ? productPrice(modelPrices[player.id]) : '';
   const weaponPrice = equippedWeapon ? 'Оружие · ' + weaponPriceLabel : '';
-  const hatPrice = current && hatPrices[current.id] ? 'Шапка · ' + productPrice(hatPrices[current.id]) : '';
+  const hatPrice = current ? 'Шапка · ' + productPrice(hatPrices[current.id], 'hat') : '';
   for (const [id, label] of [['model-price', modelPrice], ['weapon-price', weaponPrice], ['hat-price', hatPrice]]) {
     const badge = $(id);
     badge.textContent = label;
