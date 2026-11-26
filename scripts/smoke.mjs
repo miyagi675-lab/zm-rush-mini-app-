@@ -51,6 +51,7 @@ const models = '#model-items .model-pick';
 const pause = '#snapshot';
 const defaultModel = /\/assets\/(?:(?:web-v2|player-motion-v1|player-fast-v1)\/)?gign\.mdl(?:\.gz)?(?:\?|$)/;
 const motionOnly = process.argv.includes('--motion-only');
+const telegramOnly = process.argv.includes('--telegram-only');
 const motionWidth = Number(process.argv.find(arg => arg.startsWith('--motion-width='))?.split('=')[1]);
 let browser;
 
@@ -456,16 +457,144 @@ async function assertMotionPages() {
   }
 }
 
+// A slow third-party script must never hold up the local catalog. Keep its
+// response pending until the player has actually searched and built a cart.
+async function assertCatalogWithoutTelegram(page, manualLanguage = true) {
+  await page.goto(origin + mount, {waitUntil: 'domcontentloaded', timeout: 10000});
+  await loadOk(page);
+  assert.equal(await page.evaluate(() => window.Telegram), undefined);
+  await page.locator('#search').fill('Bunny');
+  assert.equal(await page.locator('#items article').count(), 1);
+  await addFromCard(page, page.locator('[data-id="bunny"]'), 'Заяц', 1);
+  await page.locator('#tab-models').click();
+  await page.locator('#model-search').fill('Dobby');
+  assert.equal(await page.locator('#model-items article').count(), 1);
+  await addFromCard(page, page.locator('[data-model-id="dobby"]'), 'Добби', 2);
+  if (manualLanguage) await page.locator('[data-language="en"]').click();
+  const cart = await openCart(page, '#cart-open-top');
+  assert.equal(await cart.locator('[data-cart-item]').count(), 2);
+  await assertCartTotal(cart, 'USD:month', manualLanguage ? /\$38\s*\/\s*month/ : /\$38\s*\/\s*месяц/);
+  const href = new URL(await page.locator('#cart-checkout').getAttribute('href'));
+  assert.match(href.searchParams.get('text'), manualLanguage ? /^Hello!/ : /^Здравствуйте!/);
+  assert.equal(await page.evaluate(() => window.purchaseUrl), undefined);
+  await page.keyboard.press('Escape');
+}
+
+const lateTelegramSdk = `(() => {
+  const calls = {};
+  const events = {};
+  const called = name => calls[name] = (calls[name] || 0) + 1;
+  window.telegramSmoke = {calls, events, emit(name) {
+    for (const handler of [...(events[name] || [])]) handler();
+  }};
+  window.Telegram = {WebApp: {
+    initData: 'late-smoke-init-data', platform: 'tdesktop',
+    ready() {called('ready')}, expand() {called('expand')},
+    isVersionAtLeast() {return true},
+    disableVerticalSwipes() {called('swipes')},
+    setHeaderColor() {called('header')}, setBackgroundColor() {called('background')},
+    onEvent(name, handler) {(events[name] ||= []).push(handler)},
+    HapticFeedback: {selectionChanged() {called('haptic')}},
+    openTelegramLink(url) {window.purchaseUrl = url; called('openTelegramLink')},
+  }};
+})();`;
+
+async function assertTelegramBoot() {
+  const sdkUrl = 'https://telegram.org/js/telegram-web-app.js';
+  for (const width of [1280, 390]) {
+    const {page, context, errors, requestFailures} = await newPage(width, 844);
+    const manualLanguage = width === 390;
+    let release;
+    const pendingSdk = new Promise(resolve => {release = resolve;});
+    let botLanguage = 'es';
+    let languageRequests = 0;
+    try {
+      await page.route(sdkUrl, async route => {
+        await pendingSdk;
+        if (!page.isClosed()) await route.fulfill({contentType: 'text/javascript', body: lateTelegramSdk});
+      });
+      await page.route('https://zmrush-ze-shop.miyagi675.workers.dev/catalog-language', route => {
+        languageRequests++;
+        assert.equal(route.request().method(), 'POST');
+        assert.deepEqual(route.request().postDataJSON(), {initData: 'late-smoke-init-data'});
+        return route.fulfill({contentType: 'application/json', body: JSON.stringify({language: botLanguage})});
+      });
+      await assertCatalogWithoutTelegram(page, manualLanguage);
+      assert.equal(languageRequests, 0, 'Standalone browsing must not request Telegram language without initData');
+      const initialLanguageResponse = manualLanguage ? null
+        : page.waitForResponse(response => response.url().endsWith('/catalog-language'));
+      release();
+      await page.waitForFunction(() => window.telegramSmoke?.calls.ready === 1);
+      await page.waitForFunction(() => window.telegramSmoke?.events.activated?.length === 1);
+      if (initialLanguageResponse) {
+        await (await initialLanguageResponse).finished();
+        await page.waitForFunction(() => localStorage.getItem('zm-rush-checkout-language') === 'es');
+      }
+      assert.equal(languageRequests, manualLanguage ? 0 : 1);
+      assert.equal(await page.evaluate(() => localStorage.getItem('zm-rush-checkout-language')), manualLanguage ? 'en' : 'es');
+      assert.equal(await page.locator('html').getAttribute('lang'), manualLanguage ? 'en' : 'ru');
+      await page.evaluate(() => {
+        const script = [...document.scripts].find(script => script.src === 'https://telegram.org/js/telegram-web-app.js');
+        script.dispatchEvent(new Event('load'));
+        script.dispatchEvent(new Event('load'));
+      });
+      assert.deepEqual(await page.evaluate(() => window.telegramSmoke.calls), {
+        ready: 1, expand: 1, swipes: 1, header: 1, background: 1,
+      });
+      assert.equal(await page.evaluate(() => window.telegramSmoke.events.activated.length), 1);
+      assert.equal(languageRequests, manualLanguage ? 0 : 1, 'Repeated SDK notifications must not repeat initialization or language sync');
+      botLanguage = 'fr';
+      await page.evaluate(() => window.telegramSmoke.emit('activated'));
+      await page.waitForFunction(() => localStorage.getItem('zm-rush-checkout-language') === 'fr');
+      assert.equal(languageRequests, manualLanguage ? 1 : 2, 'Telegram activation must keep language synchronization working after late SDK load');
+      const cart = await openCart(page, '#cart-open-top');
+      assert.equal(await cart.locator('[data-cart-item]').count(), 2, 'Late SDK must preserve the standalone cart');
+      const checkout = new URL(await page.locator('#cart-checkout').getAttribute('href'));
+      assert.match(checkout.searchParams.get('text'), /^Bonjour !/);
+      await page.locator('#cart-checkout').click();
+      assert.equal(await page.evaluate(() => window.purchaseUrl), checkout.href);
+      assert.equal(await page.evaluate(() => window.telegramSmoke.calls.openTelegramLink), 1);
+      await page.keyboard.press('Escape');
+      await page.locator('#tab-hats').click();
+      await page.locator('[data-id="bunny"] .item-pick').click();
+      await assertPurchase(page, manualLanguage ? 'Bunny' : 'Заяц', /\$8\s*\/\s*(month|месяц)/);
+      assert.equal(await page.evaluate(() => window.telegramSmoke.calls.haptic), 1, 'Late Telegram SDK must support subsequent fitting feedback');
+      assert.deepEqual(errors, []);
+      assert.deepEqual(requestFailures, []);
+    } finally {
+      release();
+      await context.close();
+    }
+  }
+
+  for (const failure of ['blocked', 'http-error']) {
+    const {page, context, errors, requestFailures} = await newPage(390, 844);
+    try {
+      await page.route(sdkUrl, route => failure === 'blocked'
+        ? route.abort('blockedbyclient')
+        : route.fulfill({status: 503, contentType: 'text/plain', body: 'SDK unavailable'}));
+      await assertCatalogWithoutTelegram(page);
+      assert(requestFailures.some(failed => failed.startsWith(sdkUrl)), 'The SDK failure must actually be exercised');
+      assert.deepEqual(requestFailures.filter(failed => !failed.startsWith(sdkUrl)), []);
+      assert.deepEqual(errors, []);
+    } finally {await context.close();}
+  }
+}
+
 try {
   browser = await chromium.launch({
     executablePath: process.env.MINI_APP_CHROMIUM || undefined,
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader'],
   });
-  if (motionOnly) {
+  if (telegramOnly) {
+    await assertTelegramBoot();
+    console.log('Focused Telegram SDK browser smoke passed: pending, late, blocked and failed SDK.');
+  } else if (motionOnly) {
     await assertMotionPages();
     console.log('Focused motion browser smoke passed.');
   } else {
+  await assertTelegramBoot();
   {
     const {page, errors, requestFailures, context} = await newPage(1280, 800);
     try {

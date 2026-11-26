@@ -1,6 +1,6 @@
 import {normalizeCatalogSearch} from './catalog-search.js?v=1';
 import {createPreviewLoader} from './preview-loader.js?v=1';
-import {productPrice} from './purchase.js?v=13';
+import {productPrice} from './purchase.js?v=14';
 import {weapons} from './weapon-catalog.js?v=7';
 
 const categories = {all:'Все', rifle:'Винтовки', smg:'Пистолеты-пулемёты', pistol:'Пистолеты', knife:'Ножи'};

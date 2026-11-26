@@ -268,7 +268,12 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
     localeRevision++;
     setCheckoutLocale(event.detail);
   });
-  window.Telegram?.WebApp?.onEvent?.('activated', syncBotLanguage);
+
+  function connectTelegram(telegram) {
+    try { telegram.onEvent?.('activated', syncBotLanguage); } catch {}
+    // A language chosen while the SDK was loading wins over its initial lookup.
+    if (localeRevision === 0) syncBotLanguage();
+  }
 
   checkout.onclick = event => {
     event.stopPropagation();
@@ -295,6 +300,5 @@ export function setupPurchase(getProducts, isBusy, catalogProducts) {
   renderCart();
   refresh();
   setCheckoutLocale(locale);
-  syncBotLanguage();
-  return {refresh, createCartButton};
+  return {refresh, createCartButton, connectTelegram};
 }

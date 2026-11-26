@@ -1,11 +1,11 @@
-import {productPrice,setupPurchase} from './purchase.js?v=13';
+import {productPrice,setupPurchase} from './purchase.js?v=14';
 import {english} from './language.js?v=25';
 import {entries,playerModels} from './catalog.js?v=15';
 import {loadModel as load,prefetchModel,invalidateModel} from './asset-loader.js?v=12';
 import {setupModelBrowser} from './model-browser.js?v=16';
 import {createPreviewLoader} from './preview-loader.js?v=1';
 import {modelPrices} from './model-prices.js?v=6';
-import {setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=16';
+import {setupWeaponBrowser, weaponPrice, weaponPriceLabel} from './weapon-browser.js?v=17';
 import {hatPrices} from './hat-prices.js?v=1';
 import {weapons} from './weapon-catalog.js?v=7';
 import {motionDefinitions,resolveMotion,applyMotionPose,advanceMotionClock} from './motion.js?v=2';
@@ -101,18 +101,6 @@ let invalidatePreview = () => {};
 let resizePreview = () => {};
 let weapon = null;
 let equippedWeapon = null;
-const telegram=window.Telegram?.WebApp;
-try {
-  telegram?.ready();
-  telegram?.expand();
-  if (telegram?.isVersionAtLeast?.('7.7')) {
-    telegram.disableVerticalSwipes?.();
-  }
-  if (telegram?.isVersionAtLeast?.('6.1')) {
-    telegram.setHeaderColor('#101513');
-    telegram.setBackgroundColor('#101513');
-  }
-} catch {}
 
 const toast=text=>{$('toast').textContent=text;};
 function modelProduct(model) {
@@ -132,6 +120,25 @@ const purchase = setupPurchase(() => {
   ...entries.map(hatProduct),
   ...weapons.map(weaponProduct),
 ]);
+
+function connectTelegram() {
+  const telegram = window.Telegram?.WebApp;
+  if (!telegram) return;
+  try {
+    telegram.ready();
+    telegram.expand();
+    if (telegram.isVersionAtLeast?.('7.7')) telegram.disableVerticalSwipes?.();
+    if (telegram.isVersionAtLeast?.('6.1')) {
+      telegram.setHeaderColor('#101513');
+      telegram.setBackgroundColor('#101513');
+    }
+  } catch {}
+  purchase.connectTelegram(telegram);
+}
+
+if (window.Telegram?.WebApp) connectTelegram();
+else $('telegram-sdk')?.addEventListener('load', connectTelegram, {once: true});
+
 function syncSelection(){for(const card of $('items').children){const selected=card.dataset.id===current?.id;card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
 const loadHatPreviews = createPreviewLoader();
 function renderCatalog(){
@@ -279,7 +286,8 @@ async function selectLook(entry,nextBody={},writeSlot=true){
   $('selected-name').textContent=entry?.name||'Без шапки';$('detail-name').textContent=entry?.name||player.name;$('detail-file').textContent=entry?entry.id+'.mdl · '+player.name:'Модель '+player.name;$('variants').replaceChildren();
   for(const variant of hat?.userData.variants||[]){const label=document.createElement('label');label.textContent='Вариант';const select=document.createElement('select');variant.names.forEach((name,index)=>{const option=document.createElement('option');option.value=index;option.textContent=name;select.append(option);});select.value=body[variant.part]||0;select.onchange=()=>selectLook(current,{...body,[variant.part]:Number(select.value)},true);label.append(select);$('variants').append(label);}
   if(writeSlot){slots[activeSlot]=entry?{id:entry.id,name:entry.name,body:{...nextBody}}:null;writeJSON('zm-rush-slots',slots);}
-  refreshSlots();syncSelection();purchase.refresh(entry && writeSlot ? 'hat' : undefined);toast('');performance.measure('zm-rush:accessory-ready',{start:started});try{telegram?.HapticFeedback?.selectionChanged();}catch{}
+  refreshSlots();syncSelection();purchase.refresh(entry && writeSlot ? 'hat' : undefined);toast('');performance.measure('zm-rush:accessory-ready',{start:started});
+  try { window.Telegram?.WebApp?.HapticFeedback?.selectionChanged(); } catch {}
   invalidatePreview();
   return true;
  }catch(error){
