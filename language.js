@@ -216,6 +216,9 @@ const pairs=`Маленькие скины|Small skins
 Ушки белки|Squirrel Ears
 Беличий хвост|Squirrel Tail
 Титан за спиной|Titan on the Back
+Костюм белки|Squirrel costume
+Костюм тыквы|Pumpkin costume
+часть комплекта|set piece
 Алкаш|Drunkard
 Бэтмен|Batman
 Заяц|Bunny

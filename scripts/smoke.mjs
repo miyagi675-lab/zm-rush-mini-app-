@@ -86,6 +86,7 @@ async function newPage(width, height) {
     document.addEventListener('change', event => {
       if (event.target?.id !== 'motion') return;
       window.studioMotionGeneration++;
+      window.studioDrawsAtMotionChange = window.studioDraws;
       window.studioMotionChangedAt = performance.now();
       window.studioPoseLastUpload = null;
       window.studioPoseUploadHistory = [];
@@ -499,6 +500,51 @@ const lateTelegramSdk = `(() => {
   }};
 })();`;
 
+async function assertCostumeFitting() {
+  const {page, context, errors} = await newPage(390, 844);
+  const selected = () => page.locator('#items .selected').evaluateAll(cards => cards.map(card => card.dataset.id).sort());
+  async function pick(id) {
+    await page.locator('[data-id="' + id + '"] .item-pick').click();
+    await loadOk(page);
+  }
+  try {
+    await page.goto(origin + mount);
+    await loadOk(page);
+    const squirrel = ['squirrel_back','squirrel_face','squirrel_head','squirrel_pelvis'];
+    for (const part of squirrel) await pick(part);
+    assert.deepEqual(await selected(), squirrel);
+    assert.equal(await page.locator('#selected-name').textContent(), 'Костюм белки · 4/4');
+    await page.locator('#save').click();
+    await pick('squirrel_face');
+    assert.deepEqual(await selected(), squirrel.filter(id => id !== 'squirrel_face'));
+    await page.locator('#slot-b').click();
+    await loadOk(page);
+    assert.deepEqual(await selected(), []);
+    await pick('pumpkin_back');
+    await pick('pumpkin_head');
+    await page.locator('#tab-models').click();
+    await page.locator('#model-search').fill('Dobby');
+    await page.locator('[data-model-id="dobby"] .model-pick').click();
+    await loadOk(page);
+    await page.locator('#tab-hats').click();
+    assert.deepEqual(await selected(), ['pumpkin_back','pumpkin_head']);
+    await pick('pumpkin_back');
+    assert.deepEqual(await selected(), ['pumpkin_head']);
+    await page.locator('#slot-a').click();
+    await loadOk(page);
+    assert.deepEqual(await selected(), squirrel.filter(id => id !== 'squirrel_face'));
+    await page.locator('#remove').click();
+    await loadOk(page);
+    await page.locator('#restore-look').click();
+    await page.waitForFunction(() => document.querySelector('#selected-name').textContent === 'Костюм белки · 4/4');
+    await loadOk(page);
+    assert.deepEqual(await selected(), squirrel);
+    await pick('bunny');
+    assert.deepEqual(await selected(), ['bunny']);
+    assert.deepEqual(errors, []);
+  } finally { await context.close(); }
+}
+
 async function assertTelegramBoot() {
   const sdkUrl = 'https://telegram.org/js/telegram-web-app.js';
   for (const width of [1280, 390]) {
@@ -594,6 +640,7 @@ try {
     await assertMotionPages();
     console.log('Focused motion browser smoke passed.');
   } else {
+  await assertCostumeFitting();
   await assertTelegramBoot();
   {
     const {page, errors, requestFailures, context} = await newPage(1280, 800);
@@ -695,7 +742,8 @@ try {
       await loadOk(page);
       await page.locator('#head').click();
       await page.locator('#motion').selectOption('static');
-      await waitForStudioDraw(page);
+      // Static mode can finish its only redraw before selectOption returns.
+      await page.waitForFunction(() => window.studioDraws > window.studioDrawsAtMotionChange);
       assert.equal(await page.locator('#head').getAttribute('aria-pressed'), 'true');
       await page.locator('#snapshot').click();
       assert.match(await page.locator('#photo').getAttribute('src'), /^data:image\/png;base64,/);

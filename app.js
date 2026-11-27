@@ -1,5 +1,5 @@
 import {productPrice,setupPurchase} from './purchase.js?v=15';
-import {english} from './language.js?v=26';
+import {english} from './language.js?v=27';
 import {entries,playerModels} from './catalog.js?v=16';
 import {loadModel as load,prefetchModel,invalidateModel} from './asset-loader.js?v=12';
 import {setupModelBrowser} from './model-browser.js?v=16';
@@ -36,7 +36,7 @@ function ensureHead(model, attachment) {
 function trimPlayers(){for(const [id,model] of playerCache){if(playerCache.size<=2)break;if(id===player.id)continue;playerCache.delete(id);disposeMDL(model);for(const [key,look] of fittedHats)if(key.startsWith(id+':')){fittedHats.delete(key);disposeMDL(look);}}}
 function fittedHat(entry,nextBody,model=player){const key=model.id+':'+entry.id+':'+JSON.stringify(nextBody);const cached=fittedHats.get(key);if(cached){fittedHats.delete(key);fittedHats.set(key,cached);}return {key,cached};}
 function hatScaleFor(model,entry){const override=model.hatScaleOverrides?.[entry.id];if(override===undefined)return model.hatScale;const base=typeof model.hatScale==='number'?{head:model.hatScale,body:model.hatScale}:model.hatScale;return {...base,...(typeof override==='number'?{head:override}:override)};}
-function trimHats(){for(const [key,value] of fittedHats){if(fittedHats.size<=8)break;if(value!==hat){fittedHats.delete(key);disposeMDL(value);}}}
+function trimHats(){for(const [key,value] of fittedHats){if(fittedHats.size<=8)break;if(!hatMeshes.includes(value)){fittedHats.delete(key);disposeMDL(value);}}}
 function weaponBytes(model) {
  let bytes=0;
  for(const {geometry,local,localNormals,boneIds,normalIds} of model.userData.meshes){
@@ -65,7 +65,8 @@ const storedSlots = readJSON('zm-rush-slots', null);
 const slots = { a: storedSlots?.a ?? null, b: storedSlots?.b ?? null };
 let savedLook = readJSON('zm-rush-look', null);
 if (!savedLook || typeof savedLook !== 'object' || Array.isArray(savedLook)) savedLook = null;
-let ct,hat,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filter='all',ready=false,modelBrowser=null;
+let equippedParts = [], hatMeshes = [];
+let ct,scene,camera,renderer,controls,rig,current=null,body={},ticket=0,filter='all',ready=false,modelBrowser=null;
 let player=playerModels.find(m=>m.id===readJSON('zm-rush-player','gign'))||playerModels[0],modelHeight=62,playerTicket=0;
 let T, OrbitControls, parseMDL, disposeMDL, measureMDLPose, prepareWeapon, fitWeapon;
 let modelHead, animatedHead, headShift;
@@ -139,7 +140,36 @@ function connectTelegram() {
 if (window.Telegram?.WebApp) connectTelegram();
 else $('telegram-sdk')?.addEventListener('load', connectTelegram, {once: true});
 
-function syncSelection(){for(const card of $('items').children){const selected=card.dataset.id===current?.id;card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
+const costumeGroups = [
+ {name:'Костюм белки', ids:['squirrel_back','squirrel_face','squirrel_head','squirrel_pelvis']},
+ {name:'Костюм тыквы', ids:['pumpkin_head','pumpkin_back']},
+];
+const costumeFor = id => costumeGroups.find(group => group.ids.includes(id));
+const wearing = id => equippedParts.some(part => part.id === id);
+function outfitName(parts) {
+ if (parts.length < 2) return parts[0]?.name || 'Без шапки';
+ const group = costumeFor(parts[0].id);
+ return group.name + ' · ' + parts.length + '/' + group.ids.length;
+}
+function pickLook(entry) {
+ const group = costumeFor(entry.id);
+ if (!group) return selectLook(entry);
+ const parts = equippedParts.filter(part => group.ids.includes(part.id) && part !== entry);
+ if (!wearing(entry.id)) parts.push(entry);
+ return selectLook(parts.at(-1), {}, true, parts);
+}
+function savedParts(look) {
+ const entry = entries.find(part => part.id === look?.id);
+ const group = costumeFor(entry?.id);
+ if (!group || !Array.isArray(look?.ids)) return entry ? [entry] : [];
+ return [...new Set([...look.ids.filter(id => group.ids.includes(id) && id !== entry.id),entry.id])]
+   .map(id => entries.find(part => part.id === id));
+}
+function savedOutfit() {
+ return current ? {id:current.id, name:outfitName(equippedParts), body:{...body},
+   ...(equippedParts.length > 1 ? {ids:equippedParts.map(part => part.id)} : {})} : null;
+}
+function syncSelection(){for(const card of $('items').children){const selected=wearing(card.dataset.id);card.classList.toggle('selected',selected);card.querySelector('.item-pick').setAttribute('aria-pressed',String(selected));card.querySelector('.check')?.remove();if(selected){const mark=document.createElement('span');mark.className='check';mark.textContent='✓';card.append(mark);}}}
 const loadHatPreviews = createPreviewLoader();
 function renderCatalog(){
  const term=normalizeCatalogSearch($('search').value);
@@ -147,14 +177,15 @@ function renderCatalog(){
  $('items').replaceChildren();$('count').textContent=filter==='favorites'?visible.length+' избранных':visible.length+' / '+entries.length;
  $('empty').hidden=!!visible.length;$('empty').textContent=filter==='favorites'?'Добавь понравившиеся модели звёздочкой.':'Ничего не нашли. Попробуй другое название.';
  for(const e of visible){
-  const card=document.createElement('article');card.className='item'+(current?.id===e.id?' selected':'');card.dataset.id=e.id;
-  const pick=document.createElement('button');pick.className='item-pick';pick.setAttribute('aria-label','Примерить: '+e.name);pick.setAttribute('aria-pressed',String(current?.id===e.id));
+  const card=document.createElement('article');card.className='item'+(wearing(e.id)?' selected':'');card.dataset.id=e.id;
+  const pick=document.createElement('button');pick.className='item-pick';pick.setAttribute('aria-label','Примерить: '+e.name);pick.setAttribute('aria-pressed',String(wearing(e.id)));
   pick.disabled = !ready;
   const img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';img.width=256;img.height=256;img.dataset.preview='assets/previews-v2/'+e.id+'.webp';
   const name=document.createElement('span');name.className='item-name';name.textContent=e.name;
   const category=document.createElement('span');category.className='item-type';category.textContent=categories[e.category];
   const price=document.createElement('span');price.className='catalog-item-price';price.textContent=productPrice(hatPrices[e.id], 'hat');
-  pick.append(img,name,category,price);pick.onclick=()=>selectLook(e,{},true);pick.onpointerenter=pick.onfocus=()=>{if(ready)prefetchModel('hats/'+e.id+'.mdl');};
+  if (costumeFor(e.id)) category.textContent = costumeFor(e.id).name + ' · часть комплекта';
+  pick.append(img,name,category,price);pick.onclick=()=>pickLook(e);pick.onpointerenter=pick.onfocus=()=>{if(ready)prefetchModel('hats/'+e.id+'.mdl');};
   const fav=document.createElement('button');fav.className='favorite';fav.textContent=favorites.has(e.id)?'★':'☆';fav.title=favorites.has(e.id)?'Убрать из избранного':'Добавить в избранное';fav.setAttribute('aria-label',fav.title);fav.setAttribute('aria-pressed',String(favorites.has(e.id)));
   fav.onclick=()=>{
     const wasFocused = document.activeElement === fav;
@@ -172,7 +203,7 @@ function renderCatalog(){
       fav.setAttribute('aria-pressed',String(added));
     }
   };
-  card.append(pick,fav,purchase.createCartButton(hatProduct(e)));if(current?.id===e.id){const check=document.createElement('span');check.className='check';check.textContent='✓';card.append(check);}$('items').append(card);
+  card.append(pick,fav,purchase.createCartButton(hatProduct(e)));if(wearing(e.id)){const check=document.createElement('span');check.className='check';check.textContent='✓';card.append(check);}$('items').append(card);
  }
  loadHatPreviews($('items'));
 }
@@ -262,36 +293,48 @@ function progressFor(label) {
     if (!$('loading').hidden) $('loading-message').textContent = label + (percent ? ' ' + percent + '%' : '');
   };
 }
-async function selectLook(entry,nextBody={},writeSlot=true){
+async function fitParts(parts, nextBody, target, model, isCurrent, onProgress) {
+ const meshes = [];
+ for (const entry of parts) {
+   const {key,cached} = fittedHat(entry,nextBody,model);
+   let mesh = cached;
+   if (!mesh) {
+     mesh = await loadPreviewModel('hats/'+entry.id+'.mdl',
+       data=>parseMDL(data,target.userData.bones,0,nextBody,hatScaleFor(model,entry),{...indexedMesh,accessoryId:entry.id}),
+       {onProgress},isCurrent);
+     if (!mesh) return null;
+     fittedHats.set(key,mesh);
+   }
+   meshes.push(mesh);
+ }
+ return meshes;
+}
+function replaceHats(meshes) {
+ for (const mesh of hatMeshes) rig.remove(mesh);
+ hatMeshes = meshes;
+ for (const mesh of meshes) rig.add(mesh);
+ trimHats();
+}
+async function selectLook(entry,nextBody={},writeSlot=true,parts=entry ? [entry] : []){
  if(!ready||selectionBusy)return false;
  const started=performance.now(),token=++ticket;
  const isCurrent = () => token === ticket;
  const label = entry ? 'Примеряем '+entry.name+'…' : 'Снимаем шапку…';
  beginLoading(label);
  try{
-  let next = null;
-  if (entry) {
-    const {key,cached} = fittedHat(entry,nextBody);
-    next = cached;
-    if (!next) {
-      const file = 'hats/'+entry.id+'.mdl';
-      next = await loadPreviewModel(file, data=>parseMDL(data,ct.userData.bones,0,nextBody,hatScaleFor(player,entry),{...indexedMesh,accessoryId:entry.id}),
-        {onProgress:p=>{if(isCurrent())progressFor(label)(p);}}, isCurrent);
-      if (!next) return false;
-      fittedHats.set(key,next);
-    }
-  }
-  if(!isCurrent())return false;if(hat)rig.remove(hat);hat=next;if(hat)rig.add(hat);trimHats();current=entry;body=nextBody;
+  const meshes = await fitParts(parts,nextBody,ct,player,isCurrent,p=>{if(isCurrent())progressFor(label)(p);});
+  if(!meshes || !isCurrent())return false;
+  replaceHats(meshes);equippedParts=parts;current=entry || null;body=nextBody;
   refreshPreviewPrices();
-  $('selected-name').textContent=entry?.name||'Без шапки';$('detail-name').textContent=entry?.name||player.name;$('detail-file').textContent=entry?entry.id+'.mdl · '+player.name:'Модель '+player.name;$('variants').replaceChildren();
-  for(const variant of hat?.userData.variants||[]){const label=document.createElement('label');label.textContent='Вариант';const select=document.createElement('select');variant.names.forEach((name,index)=>{const option=document.createElement('option');option.value=index;option.textContent=name;select.append(option);});select.value=body[variant.part]||0;select.onchange=()=>selectLook(current,{...body,[variant.part]:Number(select.value)},true);label.append(select);$('variants').append(label);}
-  if(writeSlot){slots[activeSlot]=entry?{id:entry.id,name:entry.name,body:{...nextBody}}:null;writeJSON('zm-rush-slots',slots);}
+  $('selected-name').textContent=outfitName(parts);$('detail-name').textContent=entry?.name||player.name;$('detail-file').textContent=entry?entry.id+'.mdl · '+player.name:'Модель '+player.name;$('variants').replaceChildren();
+  for(const variant of hatMeshes.at(-1)?.userData.variants||[]){const label=document.createElement('label');label.textContent='Вариант';const select=document.createElement('select');variant.names.forEach((name,index)=>{const option=document.createElement('option');option.value=index;option.textContent=name;select.append(option);});select.value=body[variant.part]||0;select.onchange=()=>selectLook(current,{...body,[variant.part]:Number(select.value)},true);label.append(select);$('variants').append(label);}
+  if(writeSlot){slots[activeSlot]=savedOutfit();writeJSON('zm-rush-slots',slots);}
   refreshSlots();syncSelection();purchase.refresh(entry && writeSlot ? 'hat' : undefined);toast('');performance.measure('zm-rush:accessory-ready',{start:started});
   try { window.Telegram?.WebApp?.HapticFeedback?.selectionChanged(); } catch {}
   invalidatePreview();
   return true;
  }catch(error){
-  if (isCurrent()) showPreviewError('Примерка не удалась.',()=>selectLook(entry,nextBody,writeSlot));
+  if (isCurrent()) showPreviewError('Примерка не удалась.',()=>selectLook(entry,nextBody,writeSlot,parts));
   console.error(error);
   return false;
  }finally{if(isCurrent()){$('loading').hidden=!retryPreview;setBusy(false);}}
@@ -356,7 +399,7 @@ async function selectWeapon(entry, purchaseWeapon = true) {
     }
   }
 }
-function chooseSlot(key){if(!ready)return;activeSlot=key;refreshSlots();const look=slots[key],entry=look?entries.find(e=>e.id===look.id):null;selectLook(entry,look?.body||{},false);}
+function chooseSlot(key){if(!ready||selectionBusy)return;activeSlot=key;refreshSlots();const look=slots[key],parts=savedParts(look);selectLook(parts.at(-1),look?.body||{},false,parts);}
 function syncMotionControls() {
   const supported = Boolean(ct && resolveMotion(ct.userData.sequences, motion, equippedWeapon).supported);
   const disabled = !ready || selectionBusy || motion === 'static' || !supported;
@@ -420,7 +463,7 @@ function updateAnimation(delta, elapsed = delta) {
 
   const motionChanged = appliedPose.player !== ct || appliedPose.motion !== motion || appliedPose.resolution !== resolvedMotion;
   if (!motionChanged && appliedPose.time === animationTime &&
-      appliedPose.hat === hat && appliedPose.weapon === weapon) return;
+      appliedPose.hat === hatMeshes && appliedPose.weapon === weapon) return;
 
   if (!resolvedMotion?.supported) return;
   const playback = applyMotionPose(ct, resolvedMotion, animationTime);
@@ -443,10 +486,10 @@ function updateAnimation(delta, elapsed = delta) {
     }
     modelHead.copy(animatedHead);
   }
-  hat?.userData.updatePose?.(resolvedMotion.sequenceIndex, playback.time, ct.userData.bones);
+  for (const mesh of hatMeshes) mesh.userData.updatePose(resolvedMotion.sequenceIndex, playback.time, ct.userData.bones);
   if (weapon) fitWeapon(weapon, ct, animatedFraming.height);
   appliedPose.player = ct;
-  appliedPose.hat = hat;
+  appliedPose.hat = hatMeshes;
   appliedPose.weapon = weapon;
   appliedPose.motion = motion;
   appliedPose.time = animationTime;
@@ -536,7 +579,7 @@ function snapshot(){
     try {
       const blob=await (await fetch(url)).blob(),file=new File([blob],'zm-rush.png',{type:'image/png'});
       if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Мой образ ZM RUSH'});
-      else await navigator.share({title:'Мой образ ZM RUSH',text:current?.name||player.name});
+      else await navigator.share({title:'Мой образ ZM RUSH',text:current ? outfitName(equippedParts) : player.name});
     }catch(error){if(error.name!=='AbortError')toast('Не удалось поделиться снимком.');}
   };
 }
@@ -548,7 +591,7 @@ async function choosePlayer(id,initial=false,download){
  ready=false;
  const message = 'Загружаем '+nextPlayer.name+'…';
  beginLoading(message);
- let next=null,nextHat=null;
+ let next=null;
  try{
   next=playerCache.get(nextPlayer.id);
   if(next){playerCache.delete(nextPlayer.id);playerCache.set(nextPlayer.id,next);}
@@ -570,18 +613,10 @@ async function choosePlayer(id,initial=false,download){
     nextCrouchedFraming = measureMDLPose(next);
     next.userData.updatePose(1,0);
   }
-  if(current){
-   const {key,cached}=fittedHat(current,body,nextPlayer);nextHat=cached;
-   if(!nextHat){
-    nextHat=await loadPreviewModel('hats/'+current.id+'.mdl',
-     data=>parseMDL(data,next.userData.bones,0,body,hatScaleFor(nextPlayer,current),{...indexedMesh,accessoryId:current.id}),undefined,isCurrent);
-    if (!nextHat) return false;
-    fittedHats.set(key,nextHat);
-   }
-  }
-  if(!isCurrent())return false;
-  if(hat)rig.remove(hat);if(ct)rig.remove(ct);
-  ct=next;hat=nextHat;player=nextPlayer;appliedPose.player=null;rig.add(ct);if(hat)rig.add(hat);trimHats();trimPlayers();
+  const meshes = await fitParts(equippedParts,body,next,nextPlayer,isCurrent);
+  if(!meshes || !isCurrent())return false;
+  if(ct)rig.remove(ct);
+  ct=next;player=nextPlayer;appliedPose.player=null;rig.add(ct);replaceHats(meshes);trimPlayers();
   animatedFraming=nextFraming;
   crouchedFraming=nextCrouchedFraming;
   animationTime=0;ready=true;
@@ -632,9 +667,9 @@ async function restoreLook(notify = true) {
   if (look.playerId !== player.id && playerModels.some(model=>model.id === look.playerId)) {
     if (!await choosePlayer(look.playerId)) return;
   }
-  const savedHat = entries.find(entry=>entry.id === look.id) || null;
+  const parts = savedParts(look);
   const savedBody = look.body && typeof look.body === 'object' && !Array.isArray(look.body) ? look.body : {};
-  if (!await selectLook(savedHat,savedBody,false)) return;
+  if (!await selectLook(parts.at(-1),savedBody,false,parts)) return;
   if (!await selectWeapon(weapons.find(entry=>entry.id === look.weaponId) || null,false)) return;
   if (notify) toast('Образ восстановлен.');
 }
@@ -658,7 +693,7 @@ $('slot-a').onclick=()=>chooseSlot('a');$('slot-b').onclick=()=>chooseSlot('b');
 $('restore-look').hidden=!savedLook;
 $('restore-look').onclick=()=>restoreLook();
 $('save').onclick=()=>{
-  const look = {playerId:player.id,id:current?.id||null,body,weaponId:equippedWeapon?.id||null};
+  const look = {playerId:player.id,id:null,body,...savedOutfit(),weaponId:equippedWeapon?.id||null};
   if (writeJSON('zm-rush-look',look)) {
     savedLook=look;
     $('restore-look').hidden=false;
