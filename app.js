@@ -275,7 +275,7 @@ async function selectLook(entry,nextBody={},writeSlot=true){
     next = cached;
     if (!next) {
       const file = 'hats/'+entry.id+'.mdl';
-      next = await loadPreviewModel(file, data=>parseMDL(data,ct.userData.bones,0,nextBody,hatScaleFor(player,entry),indexedMesh),
+      next = await loadPreviewModel(file, data=>parseMDL(data,ct.userData.bones,0,nextBody,hatScaleFor(player,entry),{...indexedMesh,accessoryId:entry.id}),
         {onProgress:p=>{if(isCurrent())progressFor(label)(p);}}, isCurrent);
       if (!next) return false;
       fittedHats.set(key,next);
@@ -574,7 +574,7 @@ async function choosePlayer(id,initial=false,download){
    const {key,cached}=fittedHat(current,body,nextPlayer);nextHat=cached;
    if(!nextHat){
     nextHat=await loadPreviewModel('hats/'+current.id+'.mdl',
-     data=>parseMDL(data,next.userData.bones,0,body,hatScaleFor(nextPlayer,current),indexedMesh),undefined,isCurrent);
+     data=>parseMDL(data,next.userData.bones,0,body,hatScaleFor(nextPlayer,current),{...indexedMesh,accessoryId:current.id}),undefined,isCurrent);
     if (!nextHat) return false;
     fittedHats.set(key,nextHat);
    }
@@ -748,7 +748,7 @@ async function loadGraphics() {
   if (T) return;
   const [three,orbit,mdl,weapons] = await Promise.all([
     import('./vendor/three.module.js'), import('./vendor/OrbitControls.js'),
-    import('./mdl.js?v=8'), import('./weapon-fit.js?v=1'),
+    import('./mdl.js?v=9'), import('./weapon-fit.js?v=1'),
   ]);
   T = three;
   OrbitControls = orbit.OrbitControls;

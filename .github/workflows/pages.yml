@@ -27,7 +27,7 @@ jobs:
           node-version: '24'
       - run: npm ci
       - run: npm test
-      - run: node --test scripts/motion.test.mjs scripts/cart.test.mjs scripts/weapon-fit.test.mjs scripts/asset-loader.test.mjs scripts/preview-textures.test.mjs bot/worker.test.mjs bot/language.test.mjs
+      - run: node --test scripts/motion.test.mjs scripts/cart.test.mjs scripts/weapon-fit.test.mjs scripts/hat-fit.test.mjs scripts/asset-loader.test.mjs scripts/preview-textures.test.mjs bot/worker.test.mjs bot/language.test.mjs
       - name: Prepare static site
         run: node scripts/build-pages.mjs "$RUNNER_TEMP/pages"
       - run: npx playwright-core install --with-deps chromium

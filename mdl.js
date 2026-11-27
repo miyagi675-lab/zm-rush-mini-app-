@@ -1,17 +1,38 @@
 import * as T from './vendor/three.module.js';
 // GoldSrc Studio v10: named-bone attachment and interpolated animation channels.
-export function parseMDL(buffer,targetBones=null,sequence=0,body={},attachmentScale=1,{indexed=false}={}) {
+// These accessories have their own animated rigs, authored around a wearable socket.
+const wearableSockets = new Map([
+ ...['19s1tr_head','a_head_m','boxing_head_m','cosmask','polarbear_head','provoke_head','pumpkin_head','snow_head','squirrel_face','squirrel_head'].map(id=>[id,'Bip01 Head']),
+ ...['19s3ct_back','19s3tr_back','cat_back','polarbear_back','provoke_back','pumpkin_back','snow_back','squirrel_back','titan_back'].map(id=>[id,'Bip01 Spine2']),
+ ...['coslantern','provoke_pelvis','squirrel_pelvis'].map(id=>[id,'Bip01 Pelvis']),
+]);
+
+export function parseMDL(buffer,targetBones=null,sequence=0,body={},attachmentScale=1,{indexed=false,accessoryId}={}) {
  const d=new DataView(buffer),bytes=new Uint8Array(buffer);
  const i=o=>d.getInt32(o,true),f=o=>d.getFloat32(o,true),s=o=>d.getInt16(o,true),u=o=>d.getUint16(o,true);
  const str=(o,n)=>new TextDecoder().decode(bytes.subarray(o,o+n)).split('\0')[0];
  if(str(0,4)!=='IDST'||i(4)!==10||i(72)!==buffer.byteLength)throw Error('Неподдерживаемый или повреждённый MDL');
  const group=new T.Group(),bones=new Map(),materials=[],variants=[],world=[],definitions=[],meshes=[];
+ const socket = wearableSockets.get(accessoryId);
+ const headSocket = socket === 'Bip01 Head';
+ const socketTransform = new T.Matrix4(), socketWorld = new T.Matrix4();
+ if (socket) {
+   // Source axes are forward, side, up. In a CS bone they are up, forward, side.
+   // The neutral head bone also leans ten degrees forward.
+   const tilt = headSocket ? Math.PI / 18 : 0, c = Math.cos(tilt), s = Math.sin(tilt);
+   const size = typeof attachmentScale === 'number' ? attachmentScale : attachmentScale[headSocket ? 'head' : 'body'];
+   socketTransform.set(s,0,c,0, c,0,-s,0, 0,1,0,0, 0,0,0,1).scale(new T.Vector3(size,size,size));
+   if (accessoryId === 'provoke_pelvis') socketTransform.multiply(new T.Matrix4().makeTranslation(0,0,-16));
+   if (headSocket && attachmentScale.headOffset) socketTransform.setPosition(...attachmentScale.headOffset);
+ }
  const sequences=Array.from({length:i(164)},(_,index)=>{const o=i(168)+index*176;return {index,name:str(o,32),fps:f(o+32),frames:i(o+56),loop:!!(i(o+36)&1),motion:i(o+68),motionBone:i(o+72),anim:i(o+156)===0?i(o+124):0};});
  for(let b=0;b<i(140);b++){const o=i(144)+b*112,name=str(o,32);definitions.push({name,parent:i(o+32),value:Array.from({length:6},(_,k)=>f(o+64+k*4)),scale:Array.from({length:6},(_,k)=>f(o+88+k*4))});const m=new T.Matrix4();world.push(m);bones.set(name,m);}
  const pos=new T.Vector3(),scale=new T.Vector3(1,1,1),q0=new T.Quaternion(),q1=new T.Quaternion(),e0=new T.Euler(0,0,0,'ZYX'),e1=new T.Euler(0,0,0,'ZYX');
  function channel(a,k,frame){const offset=u(a+k*2);if(!offset)return 0;let p=a+offset,left=frame,guard=0;while(true){const valid=bytes[p],total=bytes[p+1];if(!total||++guard>10000)throw Error('Некорректная анимация');if(left<total)return valid?s(p+2*(1+Math.min(left,valid-1))):0;left-=total;p+=2*(valid+1);}}
  function pose(seqIndex,time,target){const seq=sequences[seqIndex]||sequences[0];let frame=0;if(seq?.frames>1){const span=seq.frames-1;frame=seq.loop?((time*seq.fps)%span+span)%span:Math.min(Math.max(time*seq.fps,0),span);}const f0=Math.floor(frame),f1=Math.min(f0+1,(seq?.frames||1)-1),mix=frame-f0;
-  for(let b=0;b<definitions.length;b++){const def=definitions[b],m=world[b];if(target?.has(def.name)){m.copy(target.get(def.name));continue;}const a=seq?.anim?seq.anim+b*12:0,v0=[],v1=[];for(let k=0;k<6;k++){v0[k]=def.value[k]+(a?channel(a,k,f0)*def.scale[k]:0);v1[k]=def.value[k]+(a?channel(a,k,f1)*def.scale[k]:0);}pos.set(v0[0]+(v1[0]-v0[0])*mix,v0[1]+(v1[1]-v0[1])*mix,v0[2]+(v1[2]-v0[2])*mix);if(seq&&b===seq.motionBone){if(seq.motion&1)pos.x=0;if(seq.motion&2)pos.y=0;if(seq.motion&4)pos.z=0;}q0.setFromEuler(e0.set(v0[3],v0[4],v0[5],'ZYX'));q1.setFromEuler(e1.set(v1[3],v1[4],v1[5],'ZYX'));q0.slerp(q1,mix);m.compose(pos,q0,scale);if(def.parent>=0)m.premultiply(world[def.parent]);}
+  const anchor = socket && target?.get(socket);
+  if (anchor) socketWorld.multiplyMatrices(anchor,socketTransform);
+  for(let b=0;b<definitions.length;b++){const def=definitions[b],m=world[b];if(!socket && target?.has(def.name)){m.copy(target.get(def.name));continue;}const a=seq?.anim?seq.anim+b*12:0,v0=[],v1=[];for(let k=0;k<6;k++){v0[k]=def.value[k]+(a?channel(a,k,f0)*def.scale[k]:0);v1[k]=def.value[k]+(a?channel(a,k,f1)*def.scale[k]:0);}pos.set(v0[0]+(v1[0]-v0[0])*mix,v0[1]+(v1[1]-v0[1])*mix,v0[2]+(v1[2]-v0[2])*mix);if(seq&&b===seq.motionBone){if(seq.motion&1)pos.x=0;if(seq.motion&2)pos.y=0;if(seq.motion&4)pos.z=0;}q0.setFromEuler(e0.set(v0[3],v0[4],v0[5],'ZYX'));q1.setFromEuler(e1.set(v1[3],v1[4],v1[5],'ZYX'));q0.slerp(q1,mix);m.compose(pos,q0,scale);if(def.parent>=0)m.premultiply(world[def.parent]);else if(anchor)m.premultiply(socketWorld);}
  }
  pose(sequence,0,targetBones);
  function texture(t){if(materials[t])return materials[t];if(t<0||t>=i(180))throw Error('Не найдена текстура поверхности');const o=i(184)+t*80,flags=i(o+64),w=i(o+68),h=i(o+72),offset=i(o+76),palette=offset+w*h;if(w<1||h<1||palette+768>bytes.length)throw Error('Некорректная текстура');const rgba=new Uint8Array(w*h*4);for(let p=0,at=0;p<w*h;p++,at+=4){const c=bytes[offset+p],color=palette+c*3;rgba[at]=bytes[color];rgba[at+1]=bytes[color+1];rgba[at+2]=bytes[color+2];rgba[at+3]=(flags&64)&&c===255?0:255;}const map=new T.DataTexture(rgba,w,h);map.colorSpace=T.SRGBColorSpace;map.magFilter=T.LinearFilter;map.minFilter=T.LinearMipmapLinearFilter;map.generateMipmaps=true;map.needsUpdate=true;const material=new T.MeshLambertMaterial({map,side:T.DoubleSide,alphaTest:flags&64?0.5:0});material.userData={w,h,name:str(o,64)};materials[t]=material;return material;}
@@ -19,7 +40,7 @@ export function parseMDL(buffer,targetBones=null,sequence=0,body={},attachmentSc
  let triangles=0;
  for(let part=0;part<i(204);part++){const p=i(208)+part*76,count=i(p+64),first=i(p+72),names=Array.from({length:count},(_,k)=>str(first+k*112,64));if(count>1)variants.push({part,names});const selected=Number.isInteger(body[part])?Math.max(0,Math.min(body[part],count-1)):0,m=first+selected*112;
   for(let mesh=0;mesh<i(m+72);mesh++){const o=i(m+76)+mesh*20,material=texture(s(i(200)+i(o+8)*2));const positions=[],normals=[],uv=[],local=[],localNormals=[],boneIds=[],normalIds=[],{w,h}=material.userData;let cursor=i(o+4),guard=0;const point=new T.Vector3(),normal=new T.Vector3();
-   const emit=v=>{const vi=v[0],ni=v[1],vo=i(m+88)+vi*12,no=i(m+100)+ni*12,bi=bytes[i(m+84)+vi],bn=bytes[i(m+96)+ni],fit=typeof attachmentScale==='number'?attachmentScale:(/head|neck/i.test(definitions[bi].name)?attachmentScale.head:attachmentScale.body),offset=typeof attachmentScale==='object'&&/head/i.test(definitions[bi].name)?attachmentScale.headOffset:null;const x=f(vo)*fit+(offset?.[0]||0),y=f(vo+4)*fit+(offset?.[1]||0),z=f(vo+8)*fit+(offset?.[2]||0);local.push(x,y,z);localNormals.push(f(no),f(no+4),f(no+8));boneIds.push(bi);normalIds.push(bn);point.set(x,y,z).applyMatrix4(world[bi]);normal.set(f(no),f(no+4),f(no+8)).transformDirection(world[bn]);positions.push(...point.toArray());normals.push(...normal.toArray());uv.push(v[2]/w,v[3]/h);};
+   const emit=v=>{const vi=v[0],ni=v[1],vo=i(m+88)+vi*12,no=i(m+100)+ni*12,bi=bytes[i(m+84)+vi],bn=bytes[i(m+96)+ni],fit=socket?1:typeof attachmentScale==='number'?attachmentScale:(/head|neck/i.test(definitions[bi].name)?attachmentScale.head:attachmentScale.body),offset=!socket&&typeof attachmentScale==='object'&&/head/i.test(definitions[bi].name)?attachmentScale.headOffset:null;const x=f(vo)*fit+(offset?.[0]||0),y=f(vo+4)*fit+(offset?.[1]||0),z=f(vo+8)*fit+(offset?.[2]||0);local.push(x,y,z);localNormals.push(f(no),f(no+4),f(no+8));boneIds.push(bi);normalIds.push(bn);point.set(x,y,z).applyMatrix4(world[bi]);normal.set(f(no),f(no+4),f(no+8)).transformDirection(world[bn]);positions.push(...point.toArray());normals.push(...normal.toArray());uv.push(v[2]/w,v[3]/h);};
    const index = indexed ? [] : null;
    const cornerIndices = indexed ? new Map() : null;
    function addCorner(corner) {
