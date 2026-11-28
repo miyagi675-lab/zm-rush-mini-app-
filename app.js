@@ -144,7 +144,7 @@ const costumeGroups = [
  {name:'Костюм белки', ids:['squirrel_back','squirrel_face','squirrel_head','squirrel_pelvis']},
  {name:'Костюм тыквы', ids:['pumpkin_head','pumpkin_back']},
  {name:'Полярный костюм', ids:['polarbear_back','polarbear_head']},
- {name:'Костюм лучника', ids:['provoke_head','provoke_pelvis']},
+ {name:'Костюм лучника', ids:['provoke_head','provoke_pelvis','provoke_back']},
  {name:'Костюм снеговика', ids:['snow_head','snow_back']},
 ];
 const costumeFor = id => costumeGroups.find(group => group.ids.includes(id));

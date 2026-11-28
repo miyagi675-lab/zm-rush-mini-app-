@@ -541,19 +541,19 @@ async function assertCostumeFitting() {
     assert.deepEqual(await selected(), squirrel);
     await pick('bunny');
     assert.deepEqual(await selected(), ['bunny']);
-    const pairs = [
-      ['polarbear_head', 'polarbear_back', 'Полярный костюм'],
-      ['provoke_head', 'provoke_pelvis', 'Костюм лучника'],
-      ['snow_head', 'snow_back', 'Костюм снеговика'],
+    const costumes = [
+      ['Полярный костюм', ['polarbear_head','polarbear_back']],
+      ['Костюм лучника', ['provoke_head','provoke_pelvis','provoke_back']],
+      ['Костюм снеговика', ['snow_head','snow_back']],
     ];
-    for (const [first, second, name] of pairs) {
-      await pick(first);
-      assert.deepEqual(await selected(), [first]);
-      await pick(second);
-      assert.deepEqual(await selected(), [first, second].sort());
-      assert.equal(await page.locator('#selected-name').textContent(), name + ' · 2/2');
-      await pick(first);
-      assert.deepEqual(await selected(), [second]);
+    for (const [name, parts] of costumes) {
+      for (const [index, part] of parts.entries()) {
+        await pick(part);
+        assert.deepEqual(await selected(), parts.slice(0, index + 1).sort());
+      }
+      assert.equal(await page.locator('#selected-name').textContent(), name + ' · ' + parts.length + '/' + parts.length);
+      await pick(parts.at(-1));
+      assert.deepEqual(await selected(), parts.slice(0, -1).sort());
     }
     assert.deepEqual(errors, []);
   } finally { await context.close(); }
