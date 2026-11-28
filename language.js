@@ -218,6 +218,9 @@ const pairs=`Маленькие скины|Small skins
 Титан за спиной|Titan on the Back
 Костюм белки|Squirrel costume
 Костюм тыквы|Pumpkin costume
+Полярный костюм|Polar costume
+Костюм лучника|Archer costume
+Костюм снеговика|Snowman costume
 часть комплекта|set piece
 Алкаш|Drunkard
 Бэтмен|Batman

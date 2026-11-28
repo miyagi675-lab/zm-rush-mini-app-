@@ -1,5 +1,5 @@
 import {productPrice,setupPurchase} from './purchase.js?v=15';
-import {english} from './language.js?v=27';
+import {english} from './language.js?v=28';
 import {entries,playerModels} from './catalog.js?v=16';
 import {loadModel as load,prefetchModel,invalidateModel} from './asset-loader.js?v=12';
 import {setupModelBrowser} from './model-browser.js?v=16';
@@ -143,6 +143,9 @@ else $('telegram-sdk')?.addEventListener('load', connectTelegram, {once: true});
 const costumeGroups = [
  {name:'Костюм белки', ids:['squirrel_back','squirrel_face','squirrel_head','squirrel_pelvis']},
  {name:'Костюм тыквы', ids:['pumpkin_head','pumpkin_back']},
+ {name:'Полярный костюм', ids:['polarbear_back','polarbear_head']},
+ {name:'Костюм лучника', ids:['provoke_head','provoke_pelvis']},
+ {name:'Костюм снеговика', ids:['snow_head','snow_back']},
 ];
 const costumeFor = id => costumeGroups.find(group => group.ids.includes(id));
 const wearing = id => equippedParts.some(part => part.id === id);
